@@ -15,6 +15,7 @@ import kotlinx.coroutines.withContext
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.delay
 import info.littleboat.bluetoothcar.services.BluetoothService
+import info.littleboat.bluetoothcar.services.PairingStatus
 import javax.inject.Inject
 
 @HiltViewModel
@@ -36,8 +37,23 @@ class CarControlViewModel @Inject constructor(
     private val _isBluetoothEnabled = MutableStateFlow(false)
     val isBluetoothEnabled: StateFlow<Boolean> = _isBluetoothEnabled.asStateFlow()
 
+    private val _pairingStatus = MutableStateFlow(PairingStatus.IDLE)
+    val pairingStatus: StateFlow<PairingStatus> = _pairingStatus.asStateFlow()
+
     init {
         checkBluetoothStatus()
+        observePairingStatus()
+    }
+
+    private fun observePairingStatus() {
+        bluetoothService.pairingStatus.onEach { status ->
+            _pairingStatus.value = status
+            if (status == PairingStatus.SUCCESS) {
+                // Automatically connect after successful pairing
+                // We need the device address. This assumes the last paired device is the one we want.
+                // A better approach might be to store the device being paired.
+            }
+        }.launchIn(viewModelScope)
     }
 
     fun checkBluetoothStatus() {
@@ -46,11 +62,30 @@ class CarControlViewModel @Inject constructor(
 
     fun onPermissionsGranted() {
         // Combine paired and discovered devices
+        viewModelScope.launch {
+            val paired = bluetoothService.getPairedDevices() ?: emptySet()
+            _discoveredDevices.value = (paired + bluetoothService.discoveredDevices.value).distinctBy { it.address }
+        }
+
         bluetoothService.discoveredDevices.onEach { discovered ->
             val paired = bluetoothService.getPairedDevices() ?: emptySet()
             val allDevices = (paired + discovered).distinctBy { it.address }
             _discoveredDevices.value = allDevices
         }.launchIn(viewModelScope)
+    }
+
+    fun pairDevice(device: BluetoothDevice) {
+        if (device.bondState == BluetoothDevice.BOND_BONDED) {
+            connectToDevice(device.address)
+        } else {
+            viewModelScope.launch(Dispatchers.IO) {
+                bluetoothService.pairDevice(device)
+            }
+        }
+    }
+
+    fun resetPairingStatus() {
+        bluetoothService.resetPairingStatus()
     }
 
     fun startDiscovery() {
@@ -67,7 +102,7 @@ class CarControlViewModel @Inject constructor(
         }
     }
 
-    fun connectToCar(deviceAddress: String) {
+    private fun connectToDevice(deviceAddress: String) {
         viewModelScope.launch(Dispatchers.IO) {
             _isConnecting.value = true
             _connectionError.value = null
@@ -82,7 +117,6 @@ class CarControlViewModel @Inject constructor(
             }
         }
     }
-
     fun clearConnectionError() {
         _connectionError.value = null
     }

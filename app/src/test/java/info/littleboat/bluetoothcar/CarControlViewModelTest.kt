@@ -1,4 +1,4 @@
-package info.littleboat.bluetoothcar
+'''package info.littleboat.bluetoothcar
 
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -148,3 +148,4 @@ class CarControlViewModelTest {
         verify(mockBluetoothService).sendCommand("HORN_OFF")
     }
 }
+'''

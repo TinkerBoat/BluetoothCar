@@ -12,11 +12,20 @@ import android.content.pm.PackageManager
 import android.os.Build
 import androidx.annotation.RequiresPermission
 import androidx.core.app.ActivityCompat
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import java.io.OutputStream
 import java.util.UUID
 import javax.inject.Inject
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.MutableStateFlow
+
+
+enum class PairingStatus {
+    IDLE,
+    PAIRING,
+    SUCCESS,
+    FAILED
+}
 
 class BluetoothService @Inject constructor(
     private val context: Context,
@@ -29,11 +38,14 @@ class BluetoothService @Inject constructor(
     private val _discoveredDevices = MutableStateFlow<List<BluetoothDevice>>(emptyList())
     val discoveredDevices: StateFlow<List<BluetoothDevice>> = _discoveredDevices
 
-    private var isReceiverRegistered = false
+    private val _pairingStatus = MutableStateFlow(PairingStatus.IDLE)
+    val pairingStatus: StateFlow<PairingStatus> = _pairingStatus.asStateFlow()
+
+    private var isDiscoveryReceiverRegistered = false
 
     private val MY_UUID: UUID = UUID.fromString("00001101-0000-1000-8000-00805F9B34FB")
 
-    private val receiver = object : BroadcastReceiver() {
+    private val discoveryReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
             val action: String = intent.action!!
             when (action) {
@@ -47,19 +59,51 @@ class BluetoothService @Inject constructor(
                         } else {
                             intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE)
                         }
-                    device?.let {
-                        if (ActivityCompat.checkSelfPermission(
-                                context,
-                                Manifest.permission.BLUETOOTH_CONNECT
-                            ) != PackageManager.PERMISSION_GRANTED
-                        ) {
-                            return
+                                            device?.let { device ->
+                                                if (ActivityCompat.checkSelfPermission(
+                                                        context,
+                                                        Manifest.permission.BLUETOOTH_CONNECT
+                                                    ) != PackageManager.PERMISSION_GRANTED
+                                                ) {
+                                                    return
+                                                }
+                                                val currentList = _discoveredDevices.value.toMutableList()
+                                                if (currentList.none { it.address == device.address }) {
+                                                    currentList.add(device)
+                                                    _discoveredDevices.value = currentList
+                                                }
+                                            }                }
+            }
+        }
+    }
+
+    private val bondStateReceiver = object : BroadcastReceiver() {
+        @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
+        override fun onReceive(context: Context, intent: Intent) {
+            val action = intent.action
+
+            if (action == BluetoothDevice.ACTION_BOND_STATE_CHANGED) {
+                val device: BluetoothDevice? = intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE)
+                val bondState = intent.getIntExtra(BluetoothDevice.EXTRA_BOND_STATE, BluetoothDevice.ERROR)
+                val previousBondState = intent.getIntExtra(BluetoothDevice.EXTRA_PREVIOUS_BOND_STATE, BluetoothDevice.ERROR)
+
+                when (bondState) {
+                    BluetoothDevice.BOND_BONDED -> {
+                        _pairingStatus.value = PairingStatus.SUCCESS
+                        context.unregisterReceiver(this)
+                    }
+                    BluetoothDevice.BOND_BONDING -> {
+                        _pairingStatus.value = PairingStatus.PAIRING
+                    }
+                    BluetoothDevice.BOND_NONE -> {
+                        if (previousBondState == BluetoothDevice.BOND_BONDING) {
+                            _pairingStatus.value = PairingStatus.FAILED
                         }
-                        val currentList = _discoveredDevices.value.toMutableList()
-                        if (!currentList.any { d -> d.address == it.address }) {
-                            currentList.add(it)
-                            _discoveredDevices.value = currentList
-                        }
+                        context.unregisterReceiver(this)
+                    }
+                    BluetoothDevice.ERROR -> {
+                        _pairingStatus.value = PairingStatus.FAILED
+                        context.unregisterReceiver(this)
                     }
                 }
             }
@@ -75,31 +119,40 @@ class BluetoothService @Inject constructor(
         ) {
             return
         }
-        if (!isReceiverRegistered) {
+        if (!isDiscoveryReceiverRegistered) {
             val filter = IntentFilter(BluetoothDevice.ACTION_FOUND)
-            context.registerReceiver(receiver, filter)
-            isReceiverRegistered = true
+            context.registerReceiver(discoveryReceiver, filter)
+            isDiscoveryReceiverRegistered = true
         }
         bluetoothAdapter?.startDiscovery()
     }
 
     fun stopDiscovery() {
-        if (isReceiverRegistered) {
+        if (isDiscoveryReceiverRegistered) {
             try {
-                context.unregisterReceiver(receiver)
-                isReceiverRegistered = false
+                context.unregisterReceiver(discoveryReceiver)
+                isDiscoveryReceiverRegistered = false
             } catch (e: IllegalArgumentException) {
                 // Receiver not registered, ignore
             }
         }
-        if (ActivityCompat.checkSelfPermission(
-                context,
-                Manifest.permission.BLUETOOTH_SCAN
-            ) != PackageManager.PERMISSION_GRANTED
-        ) {
-            return
-        }
+
         bluetoothAdapter?.cancelDiscovery()
+    }
+
+    @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
+    fun pairDevice(device: BluetoothDevice) {
+        try {
+            val filter = IntentFilter(BluetoothDevice.ACTION_BOND_STATE_CHANGED)
+            context.registerReceiver(bondStateReceiver, filter)
+            device.createBond()
+        } catch (e: SecurityException) {
+            _pairingStatus.value = PairingStatus.FAILED
+        }
+    }
+
+    fun resetPairingStatus() {
+        _pairingStatus.value = PairingStatus.IDLE
     }
 
     fun isBluetoothEnabled(): Boolean {

@@ -29,15 +29,18 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.activity.result.ActivityResultLauncher // Added this import
+import androidx.activity.result.ActivityResultLauncher
+import android.bluetooth.BluetoothAdapter
 
 @OptIn(ExperimentalPermissionsApi::class)
 @Composable
 fun CarControlScreen(viewModel: CarControlViewModel) {
-    val isConnected by viewModel.isConnected.collectAsState()
     val discoveredDevices by viewModel.discoveredDevices.collectAsState()
     val isConnecting by viewModel.isConnecting.collectAsState()
+    val isConnected by viewModel.isConnected.collectAsState()
     val connectionError by viewModel.connectionError.collectAsState()
+    val pairingStatus by viewModel.pairingStatus.collectAsState()
+    val isBluetoothEnabled by viewModel.isBluetoothEnabled.collectAsState()
     var isScanning by remember { mutableStateOf(false) }
 
     val permissionsToRequest = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
@@ -60,11 +63,19 @@ fun CarControlScreen(viewModel: CarControlViewModel) {
         contract = ActivityResultContracts.StartActivityForResult()
     ) { result ->
         if (result.resultCode == Activity.RESULT_OK) {
-            val spokenText: String? = result.data?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)?.let { results ->
-                results[0]
-            }
+            val spokenText: String? =
+                result.data?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)
+                    ?.let { results ->
+                        results[0]
+                    }
             spokenText?.let { viewModel.processVoiceCommand(it) }
         }
+    }
+
+    val enableBluetoothLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult()
+    ) {
+        viewModel.checkBluetoothStatus()
     }
 
     LaunchedEffect(Unit) {
@@ -79,36 +90,74 @@ fun CarControlScreen(viewModel: CarControlViewModel) {
         }
     }
 
-    Column(
-        modifier = Modifier.fillMaxSize(),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
-    ) {
-        if (permissionsState.allPermissionsGranted) {
-            when {
-                isConnected -> ControlPanel(viewModel, speechRecognizerLauncher)
-                isConnecting -> {
-                    CircularProgressIndicator(modifier = Modifier.padding(16.dp))
-                    Text("Connecting...")
-                }
-                else -> DeviceList(viewModel, discoveredDevices, isScanning) {
-                    isScanning = it
-                }
-            }
-        } else {
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text(
-                    text = "This app requires Bluetooth, Location, and Microphone permissions to function correctly. Please grant them.",
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier.padding(16.dp)
-                )
-                Button(onClick = { permissionsState.launchMultiplePermissionRequest() }) {
-                    Text("Grant Permissions")
-                }
-            }
+    LaunchedEffect(pairingStatus) {
+        if (pairingStatus == info.littleboat.bluetoothcar.services.PairingStatus.SUCCESS) {
+            // viewModel.connectToCar(device.address) // We need the device here
+            // For now, let's reset the status and let the user click again.
+            viewModel.resetPairingStatus()
         }
-        ConnectionStatus(isConnecting, connectionError) {
-            viewModel.clearConnectionError()
+    }
+
+    if (!isBluetoothEnabled) {
+        AlertDialog(
+            onDismissRequest = { /* Do nothing */ },
+            title = { Text("Bluetooth Disabled") },
+            text = { Text("Please enable Bluetooth to use this app.") },
+            confirmButton = {
+                Button(onClick = {
+                    val intent = Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE)
+                    enableBluetoothLauncher.launch(intent)
+                }) {
+                    Text("Enable")
+                }
+            }
+        )
+    } else {
+        Column(
+            modifier = Modifier.fillMaxSize(),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            if (permissionsState.allPermissionsGranted) {
+                when {
+                    isConnected -> ControlPanel(viewModel, speechRecognizerLauncher)
+                    isConnecting || pairingStatus == info.littleboat.bluetoothcar.services.PairingStatus.PAIRING -> {
+                        CircularProgressIndicator(modifier = Modifier.padding(16.dp))
+                        Text(if (isConnecting) "Connecting..." else "Pairing...")
+                    }
+
+                    else -> DeviceList(viewModel, discoveredDevices, isScanning) {
+                        isScanning = it
+                    }
+                }
+            } else {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(
+                        text = "This app requires Bluetooth, Location, and Microphone permissions to function correctly. Please grant them.",
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.padding(16.dp)
+                    )
+                    Button(onClick = { permissionsState.launchMultiplePermissionRequest() }) {
+                        Text("Grant Permissions")
+                    }
+                }
+            }
+            ConnectionStatus(isConnecting, connectionError) {
+                viewModel.clearConnectionError()
+            }
+
+            if (pairingStatus == info.littleboat.bluetoothcar.services.PairingStatus.FAILED) {
+                AlertDialog(
+                    onDismissRequest = { viewModel.resetPairingStatus() },
+                    title = { Text("Pairing Failed") },
+                    text = { Text("Could not pair with the selected device.") },
+                    confirmButton = {
+                        Button(onClick = { viewModel.resetPairingStatus() }) {
+                            Text("OK")
+                        }
+                    }
+                )
+            }
         }
     }
 }
@@ -157,7 +206,7 @@ fun DeviceList(
 
         LazyColumn(modifier = Modifier.padding(16.dp)) {
             items(devices) { device ->
-                Button(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp), onClick = { viewModel.connectToCar(device.address) }) {
+                Button(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp), onClick = { viewModel.pairDevice(device) }) {
                     Text(device.name ?: device.address)
                 }
             }
