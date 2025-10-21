@@ -215,12 +215,12 @@ fun DeviceList(
 
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(horizontal = 16.dp)) {
             Switch(
-                checked = filterUnnamedDevices,
+                checked = !filterUnnamedDevices,
                 onCheckedChange = { isChecked ->
-                    viewModel.onFilterUnnamedDevicesChanged(isChecked)
+                    viewModel.onFilterUnnamedDevicesChanged(!isChecked)
                 }
             )
-            Text("Filter unnamed devices", modifier = Modifier.padding(start = 8.dp))
+            Text("Show unnamed devices", modifier = Modifier.padding(start = 8.dp))
         }
 
         LazyColumn(modifier = Modifier.padding(16.dp)) {

@@ -30,7 +30,7 @@ class CarControlViewModel @Inject constructor(
     private val _discoveredDevices = MutableStateFlow<List<BluetoothDevice>>(emptyList())
     val discoveredDevices: StateFlow<List<BluetoothDevice>> = _discoveredDevices.asStateFlow()
 
-    private val _filterUnnamedDevices = MutableStateFlow(false)
+    private val _filterUnnamedDevices = MutableStateFlow(true)
     val filterUnnamedDevices: StateFlow<Boolean> = _filterUnnamedDevices.asStateFlow()
 
     private val _filteredDevices = MutableStateFlow<List<BluetoothDevice>>(emptyList())
