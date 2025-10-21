@@ -283,7 +283,7 @@ fun ControlPanel(viewModel: CarControlViewModel, speechRecognizerLauncher: Activ
         
         Spacer(modifier = Modifier.height(16.dp))
 
-        PressAndHoldButton(onPress = { viewModel.horn() }, onRelease = { /* No release action for horn */ }) { Text("Horn") }
+        PressAndHoldButton(onPress = { viewModel.startHorn() }, onRelease = { viewModel.stopHorn() }) { Text("Horn") }
 
         Spacer(modifier = Modifier.height(32.dp))
 

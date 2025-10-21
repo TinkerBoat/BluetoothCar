@@ -240,10 +240,29 @@ class CarControlViewModel @Inject constructor(
     }
 
     fun horn() {
-        sendCommand("v") // Send 'V' once for a momentary horn
+        // This function is no longer used directly for press/hold
     }
 
-    // --- Voice Command Processing ---
+    private var hornJob: kotlinx.coroutines.Job? = null
+
+    fun startHorn() {
+        hornJob?.cancel() // Cancel any existing horn job
+        hornJob = viewModelScope.launch(Dispatchers.IO) {
+            while (isActive) {
+                bluetoothService.sendCommand("V")
+                delay(100) // Send 'V' every 100ms
+            }
+        }
+    }
+
+    fun stopHorn() {
+        hornJob?.cancel() // Stop sending 'V'
+        viewModelScope.launch(Dispatchers.IO) {
+            bluetoothService.sendCommand("v") // Send 'v' once on release
+        }
+    }
+
+    // --- Button Actions ---
     fun processVoiceCommand(commandText: String) {
         val lowerCaseCommand = commandText.lowercase().replace(" ","")
         when {
