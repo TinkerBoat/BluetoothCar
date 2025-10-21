@@ -226,6 +226,9 @@ class CarControlViewModel @Inject constructor(
 
     fun stopMoving() {
         movementJob?.cancel() // Stop sending movement commands
+        viewModelScope.launch(Dispatchers.IO) {
+            bluetoothService.sendCommand("S") // Send stop command
+        }
     }
 
     fun toggleFrontLight(isOn: Boolean) {
