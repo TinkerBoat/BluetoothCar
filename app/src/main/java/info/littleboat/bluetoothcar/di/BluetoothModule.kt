@@ -4,7 +4,7 @@ import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothManager
 import android.content.Context
 import dagger.Module
-import info.littleboat.bluetoothcar.services.BluetoothService // Or whatever the actual package isimport dagger.Module
+import info.littleboat.bluetoothcar.services.BluetoothService
 import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext

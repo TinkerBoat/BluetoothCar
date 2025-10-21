@@ -13,7 +13,7 @@ android {
     defaultConfig {
         applicationId = "info.littleboat.bluetoothcar"
         minSdk = 24
-        targetSdk = 35
+        targetSdk = 37
         versionCode = 1
         versionName = "1.0"
 
@@ -51,19 +51,15 @@ dependencies {
     implementation(libs.androidx.ui.graphics)
     implementation(libs.androidx.ui.tooling.preview)
     implementation(libs.androidx.material3)
-    implementation("androidx.compose.material:material-icons-extended")
-
-    // Accompanist permissions is deprecated.
-    implementation("com.google.accompanist:accompanist-permissions:0.34.0")
-
     implementation(libs.hilt.android)
-    kapt(libs.hilt.compiler) // For Kapt
+    kapt(libs.hilt.compiler)
 
-    testImplementation(libs.junit)
-    testImplementation("org.mockito:mockito-core:5.20.0")
-    testImplementation("org.mockito.kotlin:mockito-kotlin:6.1.0")
-    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.10.2")
-    testImplementation("org.jetbrains.kotlin:kotlin-reflect:2.2.20")
+    implementation(libs.androidx.material.icons.extended)
+    implementation(libs.accompanist.permissions)
+    testImplementation(libs.mockito.core)
+    testImplementation(libs.mockito.kotlin)
+    testImplementation(libs.kotlinx.coroutines.test)
+    testImplementation(libs.kotlin.reflect)
 
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)

@@ -61,6 +61,13 @@ class BluetoothService @Inject constructor(
                             intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE)
                         }
                     device?.let { device ->
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && ActivityCompat.checkSelfPermission(
+                                context,
+                                Manifest.permission.BLUETOOTH_CONNECT
+                            ) != PackageManager.PERMISSION_GRANTED
+                        ) {
+                            return
+                        }
 
                         val currentList = _discoveredDevices.value.toMutableList()
                         if (currentList.none { it.address == device.address }) {
@@ -153,6 +160,20 @@ class BluetoothService @Inject constructor(
             } catch (e: IllegalArgumentException) {
                 // Receiver not registered, ignore
             }
+        }
+
+        val permission = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            Manifest.permission.BLUETOOTH_SCAN
+        } else {
+            Manifest.permission.BLUETOOTH_ADMIN
+        }
+
+        if (ActivityCompat.checkSelfPermission(
+                context,
+                permission
+            ) != PackageManager.PERMISSION_GRANTED
+        ) {
+            return
         }
 
         bluetoothAdapter?.cancelDiscovery()

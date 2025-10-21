@@ -30,6 +30,9 @@ import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.activity.result.ActivityResultLauncher
+import androidx.compose.ui.platform.LocalContext
+import androidx.core.app.ActivityCompat
+import android.content.pm.PackageManager
 import android.bluetooth.BluetoothAdapter
 
 @OptIn(ExperimentalPermissionsApi::class)
@@ -209,6 +212,13 @@ fun DeviceList(
 
         LazyColumn(modifier = Modifier.padding(16.dp)) {
             items(devices) { device ->
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && ActivityCompat.checkSelfPermission(
+                        LocalContext.current,
+                        Manifest.permission.BLUETOOTH_CONNECT
+                    ) != PackageManager.PERMISSION_GRANTED
+                ) {
+                    return@items
+                }
                 Button(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp), onClick = { viewModel.pairDevice(device) }) {
                     Text(device.name ?: device.address)
                 }

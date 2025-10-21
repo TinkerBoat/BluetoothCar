@@ -16,6 +16,8 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.delay
 import info.littleboat.bluetoothcar.services.BluetoothService
 import info.littleboat.bluetoothcar.services.PairingStatus
+import androidx.annotation.RequiresPermission
+import android.Manifest
 import javax.inject.Inject
 
 @HiltViewModel
@@ -60,6 +62,7 @@ class CarControlViewModel @Inject constructor(
         _isBluetoothEnabled.value = bluetoothService.isBluetoothEnabled()
     }
 
+    @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
     fun onPermissionsGranted() {
         // Combine paired and discovered devices
         viewModelScope.launch {
@@ -74,6 +77,7 @@ class CarControlViewModel @Inject constructor(
         }.launchIn(viewModelScope)
     }
 
+    @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
     fun pairDevice(device: BluetoothDevice) {
         if (device.bondState == BluetoothDevice.BOND_BONDED) {
             connectToDevice(device.address)
@@ -88,6 +92,7 @@ class CarControlViewModel @Inject constructor(
         bluetoothService.resetPairingStatus()
     }
 
+    @RequiresPermission(Manifest.permission.BLUETOOTH_SCAN)
     fun startDiscovery() {
         viewModelScope.launch(Dispatchers.IO) {
             bluetoothService.startDiscovery()
