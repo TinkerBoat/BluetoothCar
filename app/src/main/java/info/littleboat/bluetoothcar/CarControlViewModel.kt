@@ -77,7 +77,12 @@ class CarControlViewModel @Inject constructor(
             } else {
                 devices
             }
-            _filteredDevices.value = filtered
+            // Sort devices: named devices first, then by recency (newest first)
+            val sortedDevices = filtered.withIndex()
+                .sortedWith(compareByDescending<IndexedValue<BluetoothDevice>> { !it.value.name.isNullOrEmpty() }
+                    .thenByDescending { it.index })
+                .map { it.value }
+            _filteredDevices.value = sortedDevices
         }
     }
 
