@@ -48,6 +48,8 @@ class CarControlViewModel @Inject constructor(
     private val _pairingStatus = MutableStateFlow(PairingStatus.IDLE)
     val pairingStatus: StateFlow<PairingStatus> = _pairingStatus.asStateFlow()
 
+    private var _deviceBeingPaired: BluetoothDevice? = null
+
     init {
         checkBluetoothStatus()
         observePairingStatus()
@@ -89,10 +91,17 @@ class CarControlViewModel @Inject constructor(
     private fun observePairingStatus() {
         bluetoothService.pairingStatus.onEach { status ->
             _pairingStatus.value = status
-            if (status == PairingStatus.SUCCESS) {
-                // Automatically connect after successful pairing
-                // We need the device address. This assumes the last paired device is the one we want.
-                // A better approach might be to store the device being paired.
+            when (status) {
+                PairingStatus.SUCCESS -> {
+                    _deviceBeingPaired?.address?.let { address ->
+                        connectToDevice(address)
+                    }
+                    _deviceBeingPaired = null
+                }
+                PairingStatus.FAILED -> {
+                    _deviceBeingPaired = null
+                }
+                else -> {}
             }
         }.launchIn(viewModelScope)
     }
@@ -124,6 +133,7 @@ class CarControlViewModel @Inject constructor(
         if (device.bondState == BluetoothDevice.BOND_BONDED) {
             connectToDevice(device.address)
         } else {
+            _deviceBeingPaired = device // Store the device being paired
             viewModelScope.launch(Dispatchers.IO) {
                 bluetoothService.pairDevice(device)
             }
