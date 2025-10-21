@@ -84,6 +84,26 @@ class BluetoothService @Inject constructor(
         }
     }
 
+    private val pairingRequestReceiver = object : BroadcastReceiver() {
+        @RequiresPermission(allOf = [Manifest.permission.BLUETOOTH_CONNECT, Manifest.permission.BLUETOOTH_ADMIN])
+        override fun onReceive(context: Context, intent: Intent) {
+            if (intent.action == BluetoothDevice.ACTION_PAIRING_REQUEST) {
+                val device: BluetoothDevice? = intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE)
+                device?.let {
+                    val pin = "1234".toByteArray()
+                    try {
+                        Log.d("BluetoothService", "Setting PIN for device: ${it.address}")
+                        it.setPin(pin)
+                        abortBroadcast()
+                    } catch (e: SecurityException) {
+                        Log.e("BluetoothService", "Failed to set PIN for device: ${it.address}", e)
+                        e.printStackTrace()
+                    }
+                }
+            }
+        }
+    }
+
     private val bondStateReceiver = object : BroadcastReceiver() {
         @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
         override fun onReceive(context: Context, intent: Intent) {
@@ -103,6 +123,7 @@ class BluetoothService @Inject constructor(
                     BluetoothDevice.BOND_BONDED -> {
                         _pairingStatus.value = PairingStatus.SUCCESS
                         context.unregisterReceiver(this)
+                        context.unregisterReceiver(pairingRequestReceiver)
                     }
 
                     BluetoothDevice.BOND_BONDING -> {
@@ -114,11 +135,13 @@ class BluetoothService @Inject constructor(
                             _pairingStatus.value = PairingStatus.FAILED
                         }
                         context.unregisterReceiver(this)
+                        context.unregisterReceiver(pairingRequestReceiver)
                     }
 
                     BluetoothDevice.ERROR -> {
                         _pairingStatus.value = PairingStatus.FAILED
                         context.unregisterReceiver(this)
+                        context.unregisterReceiver(pairingRequestReceiver)
                     }
                 }
             }
@@ -182,8 +205,10 @@ class BluetoothService @Inject constructor(
     @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
     fun pairDevice(device: BluetoothDevice) {
         try {
-            val filter = IntentFilter(BluetoothDevice.ACTION_BOND_STATE_CHANGED)
-            context.registerReceiver(bondStateReceiver, filter)
+            val pairingFilter = IntentFilter(BluetoothDevice.ACTION_PAIRING_REQUEST)
+            context.registerReceiver(pairingRequestReceiver, pairingFilter)
+            val bondFilter = IntentFilter(BluetoothDevice.ACTION_BOND_STATE_CHANGED)
+            context.registerReceiver(bondStateReceiver, bondFilter)
             device.createBond()
         } catch (e: SecurityException) {
             _pairingStatus.value = PairingStatus.FAILED
