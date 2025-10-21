@@ -18,6 +18,7 @@ import info.littleboat.bluetoothcar.services.BluetoothService
 import info.littleboat.bluetoothcar.services.PairingStatus
 import androidx.annotation.RequiresPermission
 import android.Manifest
+import kotlinx.coroutines.Job
 import javax.inject.Inject
 
 @HiltViewModel
@@ -45,10 +46,14 @@ class CarControlViewModel @Inject constructor(
     private val _isBluetoothEnabled = MutableStateFlow(false)
     val isBluetoothEnabled: StateFlow<Boolean> = _isBluetoothEnabled.asStateFlow()
 
+    private val _isScanning = MutableStateFlow(false)
+    val isScanning: StateFlow<Boolean> = _isScanning.asStateFlow()
+
     private val _pairingStatus = MutableStateFlow(PairingStatus.IDLE)
     val pairingStatus: StateFlow<PairingStatus> = _pairingStatus.asStateFlow()
 
     private var _deviceBeingPaired: BluetoothDevice? = null
+
 
     init {
         checkBluetoothStatus()
@@ -56,6 +61,7 @@ class CarControlViewModel @Inject constructor(
         observeDeviceChanges()
     }
 
+    @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
     private fun observeDeviceChanges() {
         viewModelScope.launch {
             discoveredDevices.collect { devices ->
@@ -64,6 +70,7 @@ class CarControlViewModel @Inject constructor(
         }
     }
 
+    @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
     fun onFilterUnnamedDevicesChanged(isChecked: Boolean) {
         _filterUnnamedDevices.value = isChecked
         updateFilteredDevices(discoveredDevices.value, isChecked)
@@ -147,15 +154,15 @@ class CarControlViewModel @Inject constructor(
     @RequiresPermission(Manifest.permission.BLUETOOTH_SCAN)
     fun startDiscovery() {
         viewModelScope.launch(Dispatchers.IO) {
+            _isScanning.value = true
             bluetoothService.startDiscovery()
         }
     }
 
     fun stopDiscovery() {
-        if (!_isConnecting.value) {
-            viewModelScope.launch(Dispatchers.IO) {
-                bluetoothService.stopDiscovery()
-            }
+        viewModelScope.launch(Dispatchers.IO) {
+            _isScanning.value = false
+            bluetoothService.stopDiscovery()
         }
     }
 
@@ -195,7 +202,7 @@ class CarControlViewModel @Inject constructor(
         }
     }
 
-    private var movementJob: kotlinx.coroutines.Job? = null
+    private var movementJob: Job? = null
 
     // --- Button Actions ---
     fun startMovingForward() = startMoving("F")

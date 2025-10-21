@@ -46,7 +46,7 @@ fun CarControlScreen(viewModel: CarControlViewModel) {
     val connectionError by viewModel.connectionError.collectAsState()
     val pairingStatus by viewModel.pairingStatus.collectAsState()
     val isBluetoothEnabled by viewModel.isBluetoothEnabled.collectAsState()
-    var isScanning by remember { mutableStateOf(false) }
+    val isScanning by viewModel.isScanning.collectAsState()
 
     val permissionsToRequest = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
         listOf(
@@ -132,9 +132,7 @@ fun CarControlScreen(viewModel: CarControlViewModel) {
                         Text(if (isConnecting) "Connecting..." else "Pairing...")
                     }
 
-                    else -> DeviceList(viewModel, filteredDevices, isScanning, filterUnnamedDevices) {
-                        isScanning = it
-                    }
+                    else -> DeviceList(viewModel, filteredDevices, isScanning, filterUnnamedDevices)
                 }
             } else {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -191,8 +189,7 @@ fun DeviceList(
     viewModel: CarControlViewModel,
     devices: List<BluetoothDevice>,
     isScanning: Boolean,
-    filterUnnamedDevices: Boolean,
-    onScanningChanged: (Boolean) -> Unit
+    filterUnnamedDevices: Boolean
 ) {
     Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxHeight()) {
         Spacer(modifier = Modifier.height(16.dp))
@@ -203,7 +200,6 @@ fun DeviceList(
                 } else {
                     viewModel.startDiscovery()
                 }
-                onScanningChanged(!isScanning)
             }) {
                 Text(if (isScanning) "Stop Scan" else "Scan for Devices")
             }
