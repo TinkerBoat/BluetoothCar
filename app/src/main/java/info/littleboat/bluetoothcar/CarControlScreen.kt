@@ -26,7 +26,10 @@ import android.app.Activity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Mic
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowLeft
+import androidx.compose.material.icons.filled.KeyboardArrowRight
+import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.activity.result.ActivityResultLauncher
@@ -34,6 +37,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.core.app.ActivityCompat
 import android.content.pm.PackageManager
 import android.bluetooth.BluetoothAdapter
+import androidx.compose.material.icons.filled.Mic
 
 @OptIn(ExperimentalPermissionsApi::class)
 @Composable
@@ -238,68 +242,87 @@ fun DeviceList(
 
 @Composable
 fun ControlPanel(viewModel: CarControlViewModel, speechRecognizerLauncher: ActivityResultLauncher<Intent>) {
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center,
-        modifier = Modifier.fillMaxSize()
+    Row(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp),
+        horizontalArrangement = Arrangement.Center,
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        // Movement controls
-        Box(modifier = Modifier.padding(16.dp)) {
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                PressAndHoldButton(onPress = { viewModel.startMovingForward() }, onRelease = { viewModel.stopMoving() }) { Text("Forward") }
-                Spacer(modifier = Modifier.height(16.dp))
-                Row {
-                    PressAndHoldButton(onPress = { viewModel.startTurningLeft() }, onRelease = { viewModel.stopMoving() }) { Text("Left") }
-                    Spacer(modifier = Modifier.width(80.dp)) // Spacer for visual separation
-                    PressAndHoldButton(onPress = { viewModel.startTurningRight() }, onRelease = { viewModel.stopMoving() }) { Text("Right") }
+        // D-Pad on the left
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = Modifier.weight(1f)
+        ) {
+            PressAndHoldButton(onPress = { viewModel.startMovingForward() }, onRelease = { viewModel.stopMoving() }) {
+                Icon(Icons.Default.KeyboardArrowUp, contentDescription = "Forward")
+            }
+            Spacer(modifier = Modifier.height(16.dp))
+            Row {
+                PressAndHoldButton(onPress = { viewModel.startTurningLeft() }, onRelease = { viewModel.stopMoving() }) {
+                    Icon(Icons.Default.KeyboardArrowLeft, contentDescription = "Left")
                 }
-                Spacer(modifier = Modifier.height(16.dp))
-                PressAndHoldButton(onPress = { viewModel.startMovingBackward() }, onRelease = { viewModel.stopMoving() }) { Text("Backward") }
+                Spacer(modifier = Modifier.width(16.dp)) // Spacer for visual separation
+                PressAndHoldButton(onPress = { viewModel.startTurningRight() }, onRelease = { viewModel.stopMoving() }) {
+                    Icon(Icons.Default.KeyboardArrowRight, contentDescription = "Right")
+                }
+            }
+            Spacer(modifier = Modifier.height(16.dp))
+            PressAndHoldButton(onPress = { viewModel.startMovingBackward() }, onRelease = { viewModel.stopMoving() }) {
+                Icon(Icons.Default.KeyboardArrowDown, contentDescription = "Backward")
             }
         }
 
-        Spacer(modifier = Modifier.height(32.dp))
+        // Action buttons on the right
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = Modifier.weight(1f)
+        ) {
+            // Light and horn controls
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceEvenly
+            ) {
+                var frontLightOn by remember { mutableStateOf(false) }
+                var backLightOn by remember { mutableStateOf(false) }
 
-        // Light and horn controls
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceEvenly, modifier = Modifier.fillMaxWidth()) {
-            var frontLightOn by remember { mutableStateOf(false) }
-            var backLightOn by remember { mutableStateOf(false) }
-
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text("Front Light")
-                Switch(checked = frontLightOn, onCheckedChange = { 
-                    frontLightOn = it
-                    viewModel.toggleFrontLight(it) 
-                })
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text("Front Light")
+                    Switch(checked = frontLightOn, onCheckedChange = {
+                        frontLightOn = it
+                        viewModel.toggleFrontLight(it)
+                    })
+                }
+                Spacer(modifier = Modifier.width(16.dp))
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text("Back Light")
+                    Switch(checked = backLightOn, onCheckedChange = {
+                        backLightOn = it
+                        viewModel.toggleBackLight(it)
+                    })
+                }
             }
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text("Back Light")
-                Switch(checked = backLightOn, onCheckedChange = { 
-                    backLightOn = it
-                    viewModel.toggleBackLight(it) 
-                })
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            PressAndHoldButton(onPress = { viewModel.startHorn() }, onRelease = { viewModel.stopHorn() }) { Text("Horn") }
+
+            Spacer(modifier = Modifier.height(32.dp))
+
+            Button(onClick = { viewModel.disconnect() }) { Text("Disconnect") }
+
+            // Voice Command Button
+            Spacer(modifier = Modifier.height(16.dp))
+            IconButton(onClick = {
+                val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
+                    putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
+                    putExtra(RecognizerIntent.EXTRA_LANGUAGE, "en-US")
+                    putExtra(RecognizerIntent.EXTRA_PROMPT, "Speak a command")
+                }
+                speechRecognizerLauncher.launch(intent)
+            }) {
+                Icon(Icons.Filled.Mic, contentDescription = "Voice Command")
             }
-        }
-        
-        Spacer(modifier = Modifier.height(16.dp))
-
-        PressAndHoldButton(onPress = { viewModel.startHorn() }, onRelease = { viewModel.stopHorn() }) { Text("Horn") }
-
-        Spacer(modifier = Modifier.height(32.dp))
-
-        Button(onClick = { viewModel.disconnect() }) { Text("Disconnect") }
-
-        // Voice Command Button
-        Spacer(modifier = Modifier.height(16.dp))
-        IconButton(onClick = {
-            val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
-                putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
-                putExtra(RecognizerIntent.EXTRA_LANGUAGE, "en-US")
-                putExtra(RecognizerIntent.EXTRA_PROMPT, "Speak a command")
-            }
-            speechRecognizerLauncher.launch(intent)
-        }) {
-            Icon(Icons.Filled.Mic, contentDescription = "Voice Command")
         }
     }
 }
