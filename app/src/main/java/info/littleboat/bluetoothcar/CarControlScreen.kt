@@ -39,6 +39,8 @@ import android.bluetooth.BluetoothAdapter
 @Composable
 fun CarControlScreen(viewModel: CarControlViewModel) {
     val discoveredDevices by viewModel.discoveredDevices.collectAsState()
+    val filteredDevices by viewModel.filteredDevices.collectAsState()
+    val filterUnnamedDevices by viewModel.filterUnnamedDevices.collectAsState()
     val isConnecting by viewModel.isConnecting.collectAsState()
     val isConnected by viewModel.isConnected.collectAsState()
     val connectionError by viewModel.connectionError.collectAsState()
@@ -130,7 +132,7 @@ fun CarControlScreen(viewModel: CarControlViewModel) {
                         Text(if (isConnecting) "Connecting..." else "Pairing...")
                     }
 
-                    else -> DeviceList(viewModel, discoveredDevices, isScanning) {
+                    else -> DeviceList(viewModel, filteredDevices, isScanning, filterUnnamedDevices) {
                         isScanning = it
                     }
                 }
@@ -189,6 +191,7 @@ fun DeviceList(
     viewModel: CarControlViewModel,
     devices: List<BluetoothDevice>,
     isScanning: Boolean,
+    filterUnnamedDevices: Boolean,
     onScanningChanged: (Boolean) -> Unit
 ) {
     Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxHeight()) {
@@ -208,6 +211,16 @@ fun DeviceList(
             if (isScanning) {
                 CircularProgressIndicator(modifier = Modifier.padding(start = 16.dp))
             }
+        }
+
+        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(horizontal = 16.dp)) {
+            Switch(
+                checked = filterUnnamedDevices,
+                onCheckedChange = { isChecked ->
+                    viewModel.onFilterUnnamedDevicesChanged(isChecked)
+                }
+            )
+            Text("Filter unnamed devices", modifier = Modifier.padding(start = 8.dp))
         }
 
         LazyColumn(modifier = Modifier.padding(16.dp)) {

@@ -30,6 +30,12 @@ class CarControlViewModel @Inject constructor(
     private val _discoveredDevices = MutableStateFlow<List<BluetoothDevice>>(emptyList())
     val discoveredDevices: StateFlow<List<BluetoothDevice>> = _discoveredDevices.asStateFlow()
 
+    private val _filterUnnamedDevices = MutableStateFlow(false)
+    val filterUnnamedDevices: StateFlow<Boolean> = _filterUnnamedDevices.asStateFlow()
+
+    private val _filteredDevices = MutableStateFlow<List<BluetoothDevice>>(emptyList())
+    val filteredDevices: StateFlow<List<BluetoothDevice>> = _filteredDevices.asStateFlow()
+
     private val _isConnecting = MutableStateFlow(false)
     val isConnecting: StateFlow<Boolean> = _isConnecting.asStateFlow()
 
@@ -45,6 +51,34 @@ class CarControlViewModel @Inject constructor(
     init {
         checkBluetoothStatus()
         observePairingStatus()
+        observeDeviceChanges()
+    }
+
+    private fun observeDeviceChanges() {
+        viewModelScope.launch {
+            discoveredDevices.collect { devices ->
+                updateFilteredDevices(devices, _filterUnnamedDevices.value)
+            }
+        }
+    }
+
+    fun onFilterUnnamedDevicesChanged(isChecked: Boolean) {
+        _filterUnnamedDevices.value = isChecked
+        updateFilteredDevices(discoveredDevices.value, isChecked)
+    }
+
+    @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
+    private fun updateFilteredDevices(devices: List<BluetoothDevice>, filterUnnamed: Boolean) {
+        viewModelScope.launch(Dispatchers.Default) {
+            val filtered = if (filterUnnamed) {
+                devices.filter {
+                    !it.name.isNullOrEmpty()
+                }
+            } else {
+                devices
+            }
+            _filteredDevices.value = filtered
+        }
     }
 
     private fun observePairingStatus() {
@@ -67,13 +101,16 @@ class CarControlViewModel @Inject constructor(
         // Combine paired and discovered devices
         viewModelScope.launch {
             val paired = bluetoothService.getPairedDevices() ?: emptySet()
-            _discoveredDevices.value = (paired + bluetoothService.discoveredDevices.value).distinctBy { it.address }
+            val initialDevices = (paired + bluetoothService.discoveredDevices.value).distinctBy { it.address }
+            _discoveredDevices.value = initialDevices
+            updateFilteredDevices(initialDevices, _filterUnnamedDevices.value)
         }
 
         bluetoothService.discoveredDevices.onEach { discovered ->
             val paired = bluetoothService.getPairedDevices() ?: emptySet()
             val allDevices = (paired + discovered).distinctBy { it.address }
             _discoveredDevices.value = allDevices
+            updateFilteredDevices(allDevices, _filterUnnamedDevices.value)
         }.launchIn(viewModelScope)
     }
 
