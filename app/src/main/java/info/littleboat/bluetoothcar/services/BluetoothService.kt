@@ -253,10 +253,13 @@ class BluetoothService @Inject constructor(
     }
 
     fun sendCommand(command: String): Boolean {
+        Log.d("BluetoothService", "Attempting to send command: $command")
         return try {
             outputStream?.write(command.toByteArray())
+            Log.d("BluetoothService", "Command sent successfully: $command")
             true
         } catch (e: Exception) {
+            Log.e("BluetoothService", "Failed to send command: $command", e)
             e.printStackTrace()
             false
         }
