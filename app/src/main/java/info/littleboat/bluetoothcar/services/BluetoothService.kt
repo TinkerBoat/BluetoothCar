@@ -17,6 +17,7 @@ import java.io.OutputStream
 import java.util.UUID
 import javax.inject.Inject
 import kotlinx.coroutines.flow.asStateFlow
+import android.util.Log
 import kotlinx.coroutines.flow.MutableStateFlow
 
 
@@ -59,20 +60,19 @@ class BluetoothService @Inject constructor(
                         } else {
                             intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE)
                         }
-                                            device?.let { device ->
-                                                if (ActivityCompat.checkSelfPermission(
-                                                        context,
-                                                        Manifest.permission.BLUETOOTH_CONNECT
-                                                    ) != PackageManager.PERMISSION_GRANTED
-                                                ) {
-                                                    return
-                                                }
-                                                val currentList = _discoveredDevices.value.toMutableList()
-                                                if (currentList.none { it.address == device.address }) {
-                                                    currentList.add(device)
-                                                    _discoveredDevices.value = currentList
-                                                }
-                                            }                }
+                    device?.let { device ->
+
+                        val currentList = _discoveredDevices.value.toMutableList()
+                        if (currentList.none { it.address == device.address }) {
+                            currentList.add(device)
+                            _discoveredDevices.value = currentList
+                            Log.d(
+                                "BluetoothService",
+                                "Device found: ${device.name} - ${device.address}"
+                            )
+                        }
+                    }
+                }
             }
         }
     }
@@ -83,24 +83,32 @@ class BluetoothService @Inject constructor(
             val action = intent.action
 
             if (action == BluetoothDevice.ACTION_BOND_STATE_CHANGED) {
-                val device: BluetoothDevice? = intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE)
-                val bondState = intent.getIntExtra(BluetoothDevice.EXTRA_BOND_STATE, BluetoothDevice.ERROR)
-                val previousBondState = intent.getIntExtra(BluetoothDevice.EXTRA_PREVIOUS_BOND_STATE, BluetoothDevice.ERROR)
+                val device: BluetoothDevice? =
+                    intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE)
+                val bondState =
+                    intent.getIntExtra(BluetoothDevice.EXTRA_BOND_STATE, BluetoothDevice.ERROR)
+                val previousBondState = intent.getIntExtra(
+                    BluetoothDevice.EXTRA_PREVIOUS_BOND_STATE,
+                    BluetoothDevice.ERROR
+                )
 
                 when (bondState) {
                     BluetoothDevice.BOND_BONDED -> {
                         _pairingStatus.value = PairingStatus.SUCCESS
                         context.unregisterReceiver(this)
                     }
+
                     BluetoothDevice.BOND_BONDING -> {
                         _pairingStatus.value = PairingStatus.PAIRING
                     }
+
                     BluetoothDevice.BOND_NONE -> {
                         if (previousBondState == BluetoothDevice.BOND_BONDING) {
                             _pairingStatus.value = PairingStatus.FAILED
                         }
                         context.unregisterReceiver(this)
                     }
+
                     BluetoothDevice.ERROR -> {
                         _pairingStatus.value = PairingStatus.FAILED
                         context.unregisterReceiver(this)
@@ -112,19 +120,29 @@ class BluetoothService @Inject constructor(
 
     @RequiresPermission(Manifest.permission.BLUETOOTH_SCAN)
     fun startDiscovery() {
+        val permission = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            Manifest.permission.BLUETOOTH_SCAN
+        } else {
+            Manifest.permission.BLUETOOTH_ADMIN
+        }
+
         if (ActivityCompat.checkSelfPermission(
                 context,
-                Manifest.permission.BLUETOOTH_SCAN
+                permission
             ) != PackageManager.PERMISSION_GRANTED
         ) {
             return
         }
+
         if (!isDiscoveryReceiverRegistered) {
             val filter = IntentFilter(BluetoothDevice.ACTION_FOUND)
             context.registerReceiver(discoveryReceiver, filter)
             isDiscoveryReceiverRegistered = true
         }
-        bluetoothAdapter?.startDiscovery()
+        if (bluetoothAdapter == null) {
+            return
+        }
+        bluetoothAdapter.startDiscovery()
     }
 
     fun stopDiscovery() {

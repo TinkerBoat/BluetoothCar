@@ -53,6 +53,7 @@ fun CarControlScreen(viewModel: CarControlViewModel) {
     } else {
         listOf(
             Manifest.permission.BLUETOOTH,
+            Manifest.permission.BLUETOOTH_ADMIN,
             Manifest.permission.ACCESS_FINE_LOCATION,
             Manifest.permission.RECORD_AUDIO
         )
@@ -189,19 +190,21 @@ fun DeviceList(
 ) {
     Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxHeight()) {
         Spacer(modifier = Modifier.height(16.dp))
-        Button(onClick = {
-            if (isScanning) {
-                viewModel.stopDiscovery()
-            } else {
-                viewModel.startDiscovery()
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Button(onClick = {
+                if (isScanning) {
+                    viewModel.stopDiscovery()
+                } else {
+                    viewModel.startDiscovery()
+                }
+                onScanningChanged(!isScanning)
+            }) {
+                Text(if (isScanning) "Stop Scan" else "Scan for Devices")
             }
-            onScanningChanged(!isScanning)
-        }) {
-            Text(if (isScanning) "Stop Scan" else "Scan for Devices")
-        }
 
-        if (isScanning) {
-            CircularProgressIndicator(modifier = Modifier.padding(16.dp))
+            if (isScanning) {
+                CircularProgressIndicator(modifier = Modifier.padding(start = 16.dp))
+            }
         }
 
         LazyColumn(modifier = Modifier.padding(16.dp)) {
