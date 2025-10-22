@@ -50,72 +50,50 @@ class BluetoothService @Inject constructor(
 
     private val MY_UUID: UUID = UUID.fromString("00001101-0000-1000-8000-00805F9B34FB")
 
-    private val nameChangedReceiver = object : BroadcastReceiver() {
-        override fun onReceive(context: Context, intent: Intent) {
-            if (intent.action == BluetoothDevice.ACTION_NAME_CHANGED) {
-                val device: BluetoothDevice? =
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                        intent.getParcelableExtra(
-                            BluetoothDevice.EXTRA_DEVICE,
-                            BluetoothDevice::class.java
-                        )
-                    } else {
-                        intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE)
-                    }
 
-                device?.let { updatedDevice ->
-                    val currentList = _discoveredDevices.value
-                    val deviceIndex = currentList.indexOfFirst { it.address == updatedDevice.address }
-                    if (deviceIndex != -1) {
-                        val newList = currentList.toMutableList()
-                        newList[deviceIndex] = updatedDevice
-                        _discoveredDevices.value = newList
-                    }
+    private val bluetoothDeviceReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context, intent: Intent) {
+            val action = intent.action ?: return
+            val device: BluetoothDevice? =
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                    intent.getParcelableExtra(
+                        BluetoothDevice.EXTRA_DEVICE,
+                        BluetoothDevice::class.java
+                    )
+                } else {
+                    @Suppress("DEPRECATION")
+                    intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE)
                 }
-            }
-        }
-    }
 
-    private val discoveryReceiver = object : BroadcastReceiver() {
-        override fun onReceive(context: Context, intent: Intent) {
-            val action: String = intent.action!!
-            when (action) {
-                BluetoothDevice.ACTION_FOUND -> {
-                    val device: BluetoothDevice? =
-                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                            intent.getParcelableExtra(
-                                BluetoothDevice.EXTRA_DEVICE,
-                                BluetoothDevice::class.java
-                            )
-                        } else {
-                            intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE)
-                        }
-                    device?.let { device ->
-                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && ActivityCompat.checkSelfPermission(
-                                context,
-                                Manifest.permission.BLUETOOTH_CONNECT
-                            ) != PackageManager.PERMISSION_GRANTED
-                        ) {
-                            return
-                        }
+            device?.let { updatedDevice ->
+                // Check permission if needed (API 31+)
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S &&
+                    ActivityCompat.checkSelfPermission(
+                        context,
+                        Manifest.permission.BLUETOOTH_CONNECT
+                    ) != PackageManager.PERMISSION_GRANTED
+                ) return
 
-                        val currentList = _discoveredDevices.value.toMutableList()
-                        if (currentList.none { it.address == device.address }) {
-                            currentList.add(device)
+                val currentList = _discoveredDevices.value.toMutableList()
+                val index = currentList.indexOfFirst { it.address == updatedDevice.address }
+
+                when (action) {
+                    BluetoothDevice.ACTION_FOUND,
+                    BluetoothDevice.ACTION_NAME_CHANGED -> {
+
+                        if (!updatedDevice.name.isNullOrEmpty()) {
+                            if (index == -1) {
+                                currentList.add(updatedDevice) // new device
+                            } else {
+                                currentList[index] = updatedDevice // update existing
+                            }
                             _discoveredDevices.value = currentList
-                            Log.d(
-                                "BluetoothService",
-                                "Device found: ${device.name} - ${device.address}"
-                            )
-                        val list = _discoveredDevices.value.toMutableList()
-                        val i = list.indexOfFirst { it.address == device.address }
-
-                        if (i == -1) {
-                            list.add(device) // new device
-                        } else if (!device.name.isNullOrEmpty()) {
-                            list[i] = device // update name for existing device
                         }
-                        _discoveredDevices.value = list
+
+                        Log.d(
+                            "BluetoothServiceX",
+                            "Device update ($action): ${updatedDevice.name} (${updatedDevice.address})"
+                        )
                     }
                 }
             }
@@ -208,59 +186,49 @@ class BluetoothService @Inject constructor(
 
     @RequiresPermission(Manifest.permission.BLUETOOTH_SCAN)
     fun startDiscovery() {
-        val permission = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+        // Permission check (BLUETOOTH_SCAN on API 31+, ADMIN otherwise)
+        val scanPermission = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             Manifest.permission.BLUETOOTH_SCAN
         } else {
             Manifest.permission.BLUETOOTH_ADMIN
         }
 
-        if (ActivityCompat.checkSelfPermission(
-                context,
-                permission
-            ) != PackageManager.PERMISSION_GRANTED
-        ) {
-            return
-        }
+        if (ActivityCompat.checkSelfPermission(context, scanPermission)
+            != PackageManager.PERMISSION_GRANTED
+        ) return
 
+        // Register receivers only once
         if (!isDiscoveryReceiverRegistered) {
-            val filter = IntentFilter(BluetoothDevice.ACTION_FOUND)
-            context.registerReceiver(discoveryReceiver, filter)
-
-            val nameChangedFilter = IntentFilter(BluetoothDevice.ACTION_NAME_CHANGED)
-            context.registerReceiver(nameChangedReceiver, nameChangedFilter)
-
+            val filter = IntentFilter().apply {
+                addAction(BluetoothDevice.ACTION_FOUND)
+                addAction(BluetoothDevice.ACTION_NAME_CHANGED)
+            }
+            context.registerReceiver(bluetoothDeviceReceiver, filter)
             isDiscoveryReceiverRegistered = true
         }
-        if (bluetoothAdapter == null) {
-            return
-        }
-        bluetoothAdapter.startDiscovery()
+
+        bluetoothAdapter?.startDiscovery()
     }
 
     fun stopDiscovery() {
         if (isDiscoveryReceiverRegistered) {
             try {
-                context.unregisterReceiver(discoveryReceiver)
-                context.unregisterReceiver(nameChangedReceiver)
+                context.unregisterReceiver(bluetoothDeviceReceiver)
+            } catch (ignored: IllegalArgumentException) {
+            } finally {
                 isDiscoveryReceiverRegistered = false
-            } catch (e: IllegalArgumentException) {
-                // Receiver not registered, ignore
             }
         }
 
-        val permission = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+        val scanPermission = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             Manifest.permission.BLUETOOTH_SCAN
         } else {
             Manifest.permission.BLUETOOTH_ADMIN
         }
 
-        if (ActivityCompat.checkSelfPermission(
-                context,
-                permission
-            ) != PackageManager.PERMISSION_GRANTED
-        ) {
-            return
-        }
+        if (ActivityCompat.checkSelfPermission(context, scanPermission)
+            != PackageManager.PERMISSION_GRANTED
+        ) return
 
         bluetoothAdapter?.cancelDiscovery()
     }

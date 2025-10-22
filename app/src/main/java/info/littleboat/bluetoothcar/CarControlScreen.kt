@@ -225,7 +225,7 @@ fun DeviceList(
         }
 
         LazyColumn(modifier = Modifier.padding(16.dp)) {
-            items(devices) { device ->
+            items(devices, key = { it.address }) { device ->
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && ActivityCompat.checkSelfPermission(
                         LocalContext.current,
                         Manifest.permission.BLUETOOTH_CONNECT
