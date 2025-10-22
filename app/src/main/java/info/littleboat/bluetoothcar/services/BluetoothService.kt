@@ -50,6 +50,32 @@ class BluetoothService @Inject constructor(
 
     private val MY_UUID: UUID = UUID.fromString("00001101-0000-1000-8000-00805F9B34FB")
 
+    private val nameChangedReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context, intent: Intent) {
+            if (intent.action == BluetoothDevice.ACTION_NAME_CHANGED) {
+                val device: BluetoothDevice? =
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                        intent.getParcelableExtra(
+                            BluetoothDevice.EXTRA_DEVICE,
+                            BluetoothDevice::class.java
+                        )
+                    } else {
+                        intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE)
+                    }
+
+                device?.let { updatedDevice ->
+                    val currentList = _discoveredDevices.value
+                    val deviceIndex = currentList.indexOfFirst { it.address == updatedDevice.address }
+                    if (deviceIndex != -1) {
+                        val newList = currentList.toMutableList()
+                        newList[deviceIndex] = updatedDevice
+                        _discoveredDevices.value = newList
+                    }
+                }
+            }
+        }
+    }
+
     private val discoveryReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
             val action: String = intent.action!!
@@ -81,7 +107,15 @@ class BluetoothService @Inject constructor(
                                 "BluetoothService",
                                 "Device found: ${device.name} - ${device.address}"
                             )
+                        val list = _discoveredDevices.value.toMutableList()
+                        val i = list.indexOfFirst { it.address == device.address }
+
+                        if (i == -1) {
+                            list.add(device) // new device
+                        } else if (!device.name.isNullOrEmpty()) {
+                            list[i] = device // update name for existing device
                         }
+                        _discoveredDevices.value = list
                     }
                 }
             }
@@ -191,6 +225,10 @@ class BluetoothService @Inject constructor(
         if (!isDiscoveryReceiverRegistered) {
             val filter = IntentFilter(BluetoothDevice.ACTION_FOUND)
             context.registerReceiver(discoveryReceiver, filter)
+
+            val nameChangedFilter = IntentFilter(BluetoothDevice.ACTION_NAME_CHANGED)
+            context.registerReceiver(nameChangedReceiver, nameChangedFilter)
+
             isDiscoveryReceiverRegistered = true
         }
         if (bluetoothAdapter == null) {
@@ -203,6 +241,7 @@ class BluetoothService @Inject constructor(
         if (isDiscoveryReceiverRegistered) {
             try {
                 context.unregisterReceiver(discoveryReceiver)
+                context.unregisterReceiver(nameChangedReceiver)
                 isDiscoveryReceiverRegistered = false
             } catch (e: IllegalArgumentException) {
                 // Receiver not registered, ignore
