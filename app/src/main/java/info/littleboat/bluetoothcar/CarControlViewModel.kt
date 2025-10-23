@@ -18,6 +18,7 @@ import info.littleboat.bluetoothcar.services.BluetoothService
 import info.littleboat.bluetoothcar.services.PairingStatus
 import androidx.annotation.RequiresPermission
 import android.Manifest
+import android.util.Log
 import kotlinx.coroutines.Job
 import javax.inject.Inject
 
@@ -64,7 +65,8 @@ class CarControlViewModel @Inject constructor(
     @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
     private fun observeDeviceChanges() {
         viewModelScope.launch {
-            discoveredDevices.collect { devices ->
+            bluetoothService.discoveredDevices.collect { devices ->
+                _discoveredDevices.value = devices
                 updateFilteredDevices(devices, _filterUnnamedDevices.value)
             }
         }
