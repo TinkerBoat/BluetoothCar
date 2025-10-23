@@ -16,6 +16,7 @@ mockitoCore = "5.20.0"
 mockitoKotlin = "6.1.0"
 kotlinxCoroutinesTest = "1.10.2"
 kotlinReflect = "2.2.20"
+constraintlayoutCompose = "1.1.0-alpha13"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -47,6 +48,7 @@ hilt-android-gradlePlugin = { group = "com.google.dagger", name = "hilt-android-
 
 # Optional: For Hilt and Jetpack Compose Navigation integration
 androidx-hilt-navigation-compose = { group = "androidx.hilt", name = "hilt-navigation-compose", version.ref = "androidxHiltNavigationCompose" }
+androidx-constraintlayout-compose = { group = "androidx.constraintlayout", name = "constraintlayout-compose", version.ref = "constraintlayoutCompose" }
 
 
 [plugins]

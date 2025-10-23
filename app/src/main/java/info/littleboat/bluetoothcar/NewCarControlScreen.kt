@@ -55,6 +55,11 @@ import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.activity.result.ActivityResultLauncher
 
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.Box
+
+import androidx.constraintlayout.compose.ConstraintLayout
+
 @OptIn(ExperimentalPermissionsApi::class, ExperimentalMaterial3Api::class)
 @Composable
 fun NewCarControlScreen(viewModel: CarControlViewModel, onNavigateToDeviceList: () -> Unit) {
@@ -127,13 +132,10 @@ fun NewCarControlScreen(viewModel: CarControlViewModel, onNavigateToDeviceList: 
             }
         )
     } else {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
-        ) {
+        ConstraintLayout(modifier = Modifier.fillMaxSize()) {
+            val (disconnectButton, controlPanel, permissions) = createRefs()
+
+            val isConnecting by viewModel.isConnecting.collectAsState()
             val isConnected by viewModel.isConnected.collectAsState()
             val hasLastConnectedDevice by viewModel.hasLastConnectedDevice.collectAsState()
 
@@ -142,11 +144,16 @@ fun NewCarControlScreen(viewModel: CarControlViewModel, onNavigateToDeviceList: 
                     onClick = {
                         if (isConnected) {
                             viewModel.disconnect()
+                            onNavigateToDeviceList()
                         } else {
                             viewModel.reconnectToLastDevice()
                         }
                     },
-                    enabled = !isConnecting
+                    enabled = !isConnecting,
+                    modifier = Modifier.constrainAs(disconnectButton) {
+                        top.linkTo(parent.top, margin = 16.dp)
+                        end.linkTo(parent.end, margin = 16.dp)
+                    }
                 ) {
                     Text(
                         when {
@@ -161,20 +168,44 @@ fun NewCarControlScreen(viewModel: CarControlViewModel, onNavigateToDeviceList: 
             if (permissionsState.allPermissionsGranted) {
                 when {
                     isConnected -> {
-                        ControlPanel(viewModel, speechRecognizerLauncher, onNavigateToDeviceList)
+                        ControlPanel(viewModel, speechRecognizerLauncher, onNavigateToDeviceList, modifier = Modifier.constrainAs(controlPanel) {
+                            top.linkTo(parent.top)
+                            bottom.linkTo(parent.bottom)
+                            start.linkTo(parent.start)
+                            end.linkTo(parent.end)
+                        })
                     }
                     isConnecting || pairingStatus == PairingStatus.PAIRING -> {
-                        CircularProgressIndicator(modifier = Modifier.padding(16.dp))
-                        Text(if (isConnecting) "Connecting..." else "Pairing...")
+                        CircularProgressIndicator(modifier = Modifier.constrainAs(controlPanel) {
+                            top.linkTo(parent.top)
+                            bottom.linkTo(parent.bottom)
+                            start.linkTo(parent.start)
+                            end.linkTo(parent.end)
+                        })
+                        Text(if (isConnecting) "Connecting..." else "Pairing...", modifier = Modifier.constrainAs(createRef()) {
+                            top.linkTo(controlPanel.bottom, margin = 8.dp)
+                            start.linkTo(parent.start)
+                            end.linkTo(parent.end)
+                        })
                     }
                     else -> {
-                        Button(onClick = onNavigateToDeviceList) {
+                        Button(onClick = onNavigateToDeviceList, modifier = Modifier.constrainAs(controlPanel) {
+                            top.linkTo(parent.top)
+                            bottom.linkTo(parent.bottom)
+                            start.linkTo(parent.start)
+                            end.linkTo(parent.end)
+                        }) {
                             Text("Select Device")
                         }
                     }
                 }
             } else {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.constrainAs(permissions) {
+                    top.linkTo(parent.top)
+                    bottom.linkTo(parent.bottom)
+                    start.linkTo(parent.start)
+                    end.linkTo(parent.end)
+                }) {
                     Text(
                         text = "This app requires Bluetooth, Location, and Microphone permissions to function correctly. Please grant them.",
                         textAlign = TextAlign.Center,
@@ -185,6 +216,7 @@ fun NewCarControlScreen(viewModel: CarControlViewModel, onNavigateToDeviceList: 
                     }
                 }
             }
+
             if (connectionError != null) {
                 AlertDialog(
                     onDismissRequest = { viewModel.clearConnectionError() },
@@ -215,41 +247,52 @@ fun NewCarControlScreen(viewModel: CarControlViewModel, onNavigateToDeviceList: 
 }
 
 @Composable
-fun ControlPanel(viewModel: CarControlViewModel, speechRecognizerLauncher: ActivityResultLauncher<Intent>, onNavigateToDeviceList: () -> Unit) {
-    Row(
-        modifier = Modifier
+fun ControlPanel(viewModel: CarControlViewModel, speechRecognizerLauncher: ActivityResultLauncher<Intent>, onNavigateToDeviceList: () -> Unit, modifier: Modifier = Modifier) {
+    ConstraintLayout(
+        modifier = modifier
             .fillMaxSize()
-            .padding(16.dp),
-        horizontalArrangement = Arrangement.SpaceEvenly,
-        verticalAlignment = Alignment.CenterVertically
+            .padding(16.dp)
     ) {
-        // D-Pad on the left
+        val (dpad, actions) = createRefs()
+
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center,
+            modifier = Modifier.constrainAs(dpad) {
+                top.linkTo(parent.top)
+                bottom.linkTo(parent.bottom)
+                start.linkTo(parent.start)
+                end.linkTo(actions.start)
+            }
         ) {
-            PressAndHoldButton(onPress = { viewModel.startMovingForward() }, onRelease = { viewModel.stopMoving() }) {
-                Icon(Icons.Default.KeyboardArrowUp, contentDescription = "Forward", modifier = Modifier.size(64.dp))
+            PressAndHoldButton(onPress = { viewModel.startMovingForward() }, onRelease = { viewModel.stopMoving() }, modifier = Modifier.size(100.dp)) {
+                Icon(Icons.Default.KeyboardArrowUp, contentDescription = "Forward", modifier = Modifier.size(90.dp))
             }
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(8.dp))
             Row {
-                PressAndHoldButton(onPress = { viewModel.startTurningLeft() }, onRelease = { viewModel.stopMoving() }) {
-                    Icon(Icons.Default.KeyboardArrowLeft, contentDescription = "Left", modifier = Modifier.size(64.dp))
+                PressAndHoldButton(onPress = { viewModel.startTurningLeft() }, onRelease = { viewModel.stopMoving() }, modifier = Modifier.size(100.dp)) {
+                    Icon(Icons.Default.KeyboardArrowLeft, contentDescription = "Left", modifier = Modifier.size(90.dp))
                 }
-                Spacer(modifier = Modifier.width(80.dp)) // Spacer for visual separation
-                PressAndHoldButton(onPress = { viewModel.startTurningRight() }, onRelease = { viewModel.stopMoving() }) {
-                    Icon(Icons.Default.KeyboardArrowRight, contentDescription = "Right", modifier = Modifier.size(64.dp))
+                Spacer(modifier = Modifier.width(40.dp))
+                PressAndHoldButton(onPress = { viewModel.startTurningRight() }, onRelease = { viewModel.stopMoving() }, modifier = Modifier.size(100.dp)) {
+                    Icon(Icons.Default.KeyboardArrowRight, contentDescription = "Right", modifier = Modifier.size(90.dp))
                 }
             }
-            Spacer(modifier = Modifier.height(16.dp))
-            PressAndHoldButton(onPress = { viewModel.startMovingBackward() }, onRelease = { viewModel.stopMoving() }) {
-                Icon(Icons.Default.KeyboardArrowDown, contentDescription = "Backward", modifier = Modifier.size(64.dp))
+            Spacer(modifier = Modifier.height(8.dp))
+            PressAndHoldButton(onPress = { viewModel.startMovingBackward() }, onRelease = { viewModel.stopMoving() }, modifier = Modifier.size(100.dp)) {
+                Icon(Icons.Default.KeyboardArrowDown, contentDescription = "Backward", modifier = Modifier.size(90.dp))
             }
         }
 
-        // Action buttons on the right
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.SpaceEvenly
+            verticalArrangement = Arrangement.SpaceEvenly,
+            modifier = Modifier.constrainAs(actions) {
+                top.linkTo(parent.top)
+                bottom.linkTo(parent.bottom)
+                start.linkTo(dpad.end)
+                end.linkTo(parent.end)
+            }
         ) {
             // Speed controls
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -257,8 +300,6 @@ fun ControlPanel(viewModel: CarControlViewModel, speechRecognizerLauncher: Activ
                 Button(onClick = { viewModel.setSpeed("medium") }) { Text("Medium") }
                 Button(onClick = { viewModel.setSpeed("low") }) { Text("Low") }
             }
-
-            Spacer(modifier = Modifier.height(16.dp))
 
             // Light and horn controls
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -276,11 +317,7 @@ fun ControlPanel(viewModel: CarControlViewModel, speechRecognizerLauncher: Activ
                 }) { Text("Back Light") }
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
-
             PressAndHoldButton(onPress = { viewModel.startHorn() }, onRelease = { viewModel.stopHorn() }) { Text("Horn") }
-
-            Spacer(modifier = Modifier.height(16.dp))
 
             // Voice Command Button
             IconButton(onClick = {
@@ -292,12 +329,6 @@ fun ControlPanel(viewModel: CarControlViewModel, speechRecognizerLauncher: Activ
                 speechRecognizerLauncher.launch(intent)
             }) {
                 Icon(Icons.Filled.Mic, contentDescription = "Voice Command", modifier = Modifier.size(48.dp))
-            }
-
-            Spacer(modifier = Modifier.height(32.dp))
-
-            Button(onClick = onNavigateToDeviceList) {
-                Text("Bluetooth Devices")
             }
         }
     }
