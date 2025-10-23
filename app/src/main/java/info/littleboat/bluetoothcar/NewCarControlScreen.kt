@@ -1,57 +1,68 @@
 package info.littleboat.bluetoothcar
 
 import android.Manifest
-import android.bluetooth.BluetoothDevice
+import android.app.Activity
+import android.bluetooth.BluetoothAdapter
+import android.content.Intent
 import android.os.Build
-import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import android.speech.RecognizerIntent
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.Switch
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.runtime.*
+import androidx.compose.material3.TopAppBar
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.input.pointer.PointerEventType
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.rememberMultiplePermissionsState
-import android.speech.RecognizerIntent
-import android.content.Intent
-import android.app.Activity
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.material.icons.Icons
+import info.littleboat.bluetoothcar.services.PairingStatus
+
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.Mic
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
+import androidx.compose.ui.input.pointer.PointerEventType
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.activity.result.ActivityResultLauncher
-import androidx.compose.ui.platform.LocalContext
-import androidx.core.app.ActivityCompat
-import android.content.pm.PackageManager
-import android.bluetooth.BluetoothAdapter
-import androidx.compose.material.icons.filled.Mic
 
-@OptIn(ExperimentalPermissionsApi::class)
+@OptIn(ExperimentalPermissionsApi::class, ExperimentalMaterial3Api::class)
 @Composable
-fun CarControlScreen(viewModel: CarControlViewModel) {
-    val discoveredDevices by viewModel.discoveredDevices.collectAsState()
-    val filteredDevices by viewModel.filteredDevices.collectAsState()
-    val filterUnnamedDevices by viewModel.filterUnnamedDevices.collectAsState()
+fun NewCarControlScreen(viewModel: CarControlViewModel, onNavigateToDeviceList: () -> Unit) {
     val isConnecting by viewModel.isConnecting.collectAsState()
     val isConnected by viewModel.isConnected.collectAsState()
     val connectionError by viewModel.connectionError.collectAsState()
     val pairingStatus by viewModel.pairingStatus.collectAsState()
     val isBluetoothEnabled by viewModel.isBluetoothEnabled.collectAsState()
-    val isScanning by viewModel.isScanning.collectAsState()
 
     val permissionsToRequest = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
         listOf(
@@ -101,14 +112,6 @@ fun CarControlScreen(viewModel: CarControlViewModel) {
         }
     }
 
-    LaunchedEffect(pairingStatus) {
-        if (pairingStatus == info.littleboat.bluetoothcar.services.PairingStatus.SUCCESS) {
-            // viewModel.connectToCar(device.address) // We need the device here
-            // For now, let's reset the status and let the user click again.
-            viewModel.resetPairingStatus()
-        }
-    }
-
     if (!isBluetoothEnabled) {
         AlertDialog(
             onDismissRequest = { /* Do nothing */ },
@@ -125,19 +128,50 @@ fun CarControlScreen(viewModel: CarControlViewModel) {
         )
     } else {
         Column(
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
+            val isConnected by viewModel.isConnected.collectAsState()
+            val hasLastConnectedDevice by viewModel.hasLastConnectedDevice.collectAsState()
+
+            if (hasLastConnectedDevice || isConnected) {
+                Button(
+                    onClick = {
+                        if (isConnected) {
+                            viewModel.disconnect()
+                        } else {
+                            viewModel.reconnectToLastDevice()
+                        }
+                    },
+                    enabled = !isConnecting
+                ) {
+                    Text(
+                        when {
+                            isConnected -> "Disconnect"
+                            isConnecting -> "Connecting..."
+                            else -> "Reconnect"
+                        }
+                    )
+                }
+            }
+
             if (permissionsState.allPermissionsGranted) {
                 when {
-                    isConnected -> ControlPanel(viewModel, speechRecognizerLauncher)
-                    isConnecting || pairingStatus == info.littleboat.bluetoothcar.services.PairingStatus.PAIRING -> {
+                    isConnected -> {
+                        ControlPanel(viewModel, speechRecognizerLauncher, onNavigateToDeviceList)
+                    }
+                    isConnecting || pairingStatus == PairingStatus.PAIRING -> {
                         CircularProgressIndicator(modifier = Modifier.padding(16.dp))
                         Text(if (isConnecting) "Connecting..." else "Pairing...")
                     }
-
-                    else -> DeviceList(viewModel, filteredDevices, isScanning, filterUnnamedDevices)
+                    else -> {
+                        Button(onClick = onNavigateToDeviceList) {
+                            Text("Select Device")
+                        }
+                    }
                 }
             } else {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -151,11 +185,20 @@ fun CarControlScreen(viewModel: CarControlViewModel) {
                     }
                 }
             }
-            ConnectionStatus(isConnecting, connectionError) {
-                viewModel.clearConnectionError()
+            if (connectionError != null) {
+                AlertDialog(
+                    onDismissRequest = { viewModel.clearConnectionError() },
+                    title = { Text("Connection Failed") },
+                    text = { Text(connectionError!!) },
+                    confirmButton = {
+                        Button(onClick = { viewModel.clearConnectionError() }) {
+                            Text("OK")
+                        }
+                    }
+                )
             }
 
-            if (pairingStatus == info.littleboat.bluetoothcar.services.PairingStatus.FAILED) {
+            if (pairingStatus == PairingStatus.FAILED) {
                 AlertDialog(
                     onDismissRequest = { viewModel.resetPairingStatus() },
                     title = { Text("Pairing Failed") },
@@ -172,148 +215,74 @@ fun CarControlScreen(viewModel: CarControlViewModel) {
 }
 
 @Composable
-fun ConnectionStatus(isConnecting: Boolean, error: String?, onErrorDismiss: () -> Unit) {
-    if (isConnecting) {
-        CircularProgressIndicator(modifier = Modifier.padding(16.dp))
-    } else if (error != null) {
-        AlertDialog(
-            onDismissRequest = onErrorDismiss,
-            title = { Text("Connection Failed") },
-            text = { Text(error) },
-            confirmButton = {
-                Button(onClick = onErrorDismiss) {
-                    Text("OK")
-                }
-            }
-        )
-    }
-}
-
-@Composable
-fun DeviceList(
-    viewModel: CarControlViewModel,
-    devices: List<BluetoothDevice>,
-    isScanning: Boolean,
-    filterUnnamedDevices: Boolean
-) {
-    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxHeight()) {
-        Spacer(modifier = Modifier.height(16.dp))
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Button(onClick = {
-                if (isScanning) {
-                    viewModel.stopDiscovery()
-                } else {
-                    viewModel.startDiscovery()
-                }
-            }) {
-                Text(if (isScanning) "Stop Scan" else "Scan for Devices")
-            }
-
-            if (isScanning) {
-                CircularProgressIndicator(modifier = Modifier.padding(start = 16.dp))
-            }
-        }
-
-        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(horizontal = 16.dp)) {
-            Switch(
-                checked = !filterUnnamedDevices,
-                onCheckedChange = { isChecked ->
-                    viewModel.onFilterUnnamedDevicesChanged(!isChecked)
-                }
-            )
-            Text("Show unnamed devices", modifier = Modifier.padding(start = 8.dp))
-        }
-
-        LazyColumn(modifier = Modifier.padding(16.dp)) {
-            items(devices, key = { it.address }) { device ->
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && ActivityCompat.checkSelfPermission(
-                        LocalContext.current,
-                        Manifest.permission.BLUETOOTH_CONNECT
-                    ) != PackageManager.PERMISSION_GRANTED
-                ) {
-                    return@items
-                }
-                Button(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp), onClick = { viewModel.pairDevice(device) }) {
-                    Text(device.name ?: device.address)
-                }
-            }
-        }
-    }
-}
-
-@Composable
-fun ControlPanel(viewModel: CarControlViewModel, speechRecognizerLauncher: ActivityResultLauncher<Intent>) {
+fun ControlPanel(viewModel: CarControlViewModel, speechRecognizerLauncher: ActivityResultLauncher<Intent>, onNavigateToDeviceList: () -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxSize()
             .padding(16.dp),
-        horizontalArrangement = Arrangement.Center,
+        horizontalArrangement = Arrangement.SpaceEvenly,
         verticalAlignment = Alignment.CenterVertically
     ) {
         // D-Pad on the left
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
-            modifier = Modifier.weight(1f)
         ) {
             PressAndHoldButton(onPress = { viewModel.startMovingForward() }, onRelease = { viewModel.stopMoving() }) {
-                Icon(Icons.Default.KeyboardArrowUp, contentDescription = "Forward")
+                Icon(Icons.Default.KeyboardArrowUp, contentDescription = "Forward", modifier = Modifier.size(64.dp))
             }
             Spacer(modifier = Modifier.height(16.dp))
             Row {
                 PressAndHoldButton(onPress = { viewModel.startTurningLeft() }, onRelease = { viewModel.stopMoving() }) {
-                    Icon(Icons.Default.KeyboardArrowLeft, contentDescription = "Left")
+                    Icon(Icons.Default.KeyboardArrowLeft, contentDescription = "Left", modifier = Modifier.size(64.dp))
                 }
-                Spacer(modifier = Modifier.width(16.dp)) // Spacer for visual separation
+                Spacer(modifier = Modifier.width(80.dp)) // Spacer for visual separation
                 PressAndHoldButton(onPress = { viewModel.startTurningRight() }, onRelease = { viewModel.stopMoving() }) {
-                    Icon(Icons.Default.KeyboardArrowRight, contentDescription = "Right")
+                    Icon(Icons.Default.KeyboardArrowRight, contentDescription = "Right", modifier = Modifier.size(64.dp))
                 }
             }
             Spacer(modifier = Modifier.height(16.dp))
             PressAndHoldButton(onPress = { viewModel.startMovingBackward() }, onRelease = { viewModel.stopMoving() }) {
-                Icon(Icons.Default.KeyboardArrowDown, contentDescription = "Backward")
+                Icon(Icons.Default.KeyboardArrowDown, contentDescription = "Backward", modifier = Modifier.size(64.dp))
             }
         }
 
         // Action buttons on the right
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
-            modifier = Modifier.weight(1f)
+            verticalArrangement = Arrangement.SpaceEvenly
         ) {
+            // Speed controls
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Button(onClick = { viewModel.setSpeed("high") }) { Text("High") }
+                Button(onClick = { viewModel.setSpeed("medium") }) { Text("Medium") }
+                Button(onClick = { viewModel.setSpeed("low") }) { Text("Low") }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
             // Light and horn controls
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceEvenly
-            ) {
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 var frontLightOn by remember { mutableStateOf(false) }
                 var backLightOn by remember { mutableStateOf(false) }
 
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text("Front Light")
-                    Switch(checked = frontLightOn, onCheckedChange = {
-                        frontLightOn = it
-                        viewModel.toggleFrontLight(it)
-                    })
-                }
-                Spacer(modifier = Modifier.width(16.dp))
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text("Back Light")
-                    Switch(checked = backLightOn, onCheckedChange = {
-                        backLightOn = it
-                        viewModel.toggleBackLight(it)
-                    })
-                }
+                Button(onClick = {
+                    frontLightOn = !frontLightOn
+                    viewModel.toggleFrontLight(frontLightOn)
+                }) { Text("Front Light") }
+
+                Button(onClick = {
+                    backLightOn = !backLightOn
+                    viewModel.toggleBackLight(backLightOn)
+                }) { Text("Back Light") }
             }
 
             Spacer(modifier = Modifier.height(16.dp))
 
             PressAndHoldButton(onPress = { viewModel.startHorn() }, onRelease = { viewModel.stopHorn() }) { Text("Horn") }
 
-            Spacer(modifier = Modifier.height(32.dp))
-
-            Button(onClick = { viewModel.disconnect() }) { Text("Disconnect") }
+            Spacer(modifier = Modifier.height(16.dp))
 
             // Voice Command Button
-            Spacer(modifier = Modifier.height(16.dp))
             IconButton(onClick = {
                 val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
                     putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
@@ -322,7 +291,13 @@ fun ControlPanel(viewModel: CarControlViewModel, speechRecognizerLauncher: Activ
                 }
                 speechRecognizerLauncher.launch(intent)
             }) {
-                Icon(Icons.Filled.Mic, contentDescription = "Voice Command")
+                Icon(Icons.Filled.Mic, contentDescription = "Voice Command", modifier = Modifier.size(48.dp))
+            }
+
+            Spacer(modifier = Modifier.height(32.dp))
+
+            Button(onClick = onNavigateToDeviceList) {
+                Text("Bluetooth Devices")
             }
         }
     }
@@ -353,6 +328,8 @@ fun PressAndHoldButton(
             }
         }
     ) {
-        content()
+        Row {
+            content()
+        }
     }
 }

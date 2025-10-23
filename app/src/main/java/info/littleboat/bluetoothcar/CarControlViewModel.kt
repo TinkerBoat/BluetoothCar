@@ -53,6 +53,9 @@ class CarControlViewModel @Inject constructor(
     private val _pairingStatus = MutableStateFlow(PairingStatus.IDLE)
     val pairingStatus: StateFlow<PairingStatus> = _pairingStatus.asStateFlow()
 
+    private val _hasLastConnectedDevice = MutableStateFlow(false)
+    val hasLastConnectedDevice: StateFlow<Boolean> = _hasLastConnectedDevice.asStateFlow()
+
     private var _deviceBeingPaired: BluetoothDevice? = null
 
 
@@ -60,6 +63,9 @@ class CarControlViewModel @Inject constructor(
         checkBluetoothStatus()
         observePairingStatus()
         observeDeviceChanges()
+        viewModelScope.launch {
+            _hasLastConnectedDevice.value = bluetoothService.getLastConnectedDeviceAddress() != null
+        }
     }
 
     @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
@@ -193,6 +199,25 @@ class CarControlViewModel @Inject constructor(
             bluetoothService.disconnect()
             withContext(Dispatchers.Main) {
                 _isConnected.value = false
+            }
+        }
+    }
+
+    fun setSpeed(speed: String) {
+        val command = when (speed) {
+            "high" -> "1"
+            "medium" -> "2"
+            "low" -> "3"
+            else -> ""
+        }
+        sendCommand(command)
+    }
+
+    fun reconnectToLastDevice() {
+        viewModelScope.launch(Dispatchers.IO) {
+            val lastDeviceAddress = bluetoothService.getLastConnectedDeviceAddress()
+            if (lastDeviceAddress != null) {
+                connectToDevice(lastDeviceAddress)
             }
         }
     }

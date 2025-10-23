@@ -36,6 +36,7 @@ class BluetoothService @Inject constructor(
 
     private var bluetoothSocket: BluetoothSocket? = null
     private var outputStream: OutputStream? = null
+    private var _lastConnectedDeviceAddress: String? = null
 
     private val _discoveredDevices = MutableStateFlow<List<BluetoothDevice>>(emptyList())
     val discoveredDevices: StateFlow<List<BluetoothDevice>> = _discoveredDevices
@@ -289,6 +290,10 @@ class BluetoothService @Inject constructor(
         return bluetoothAdapter?.bondedDevices
     }
 
+    fun getLastConnectedDeviceAddress(): String? {
+        return _lastConnectedDeviceAddress
+    }
+
     fun connectToDevice(deviceAddress: String): Boolean {
         if (bluetoothAdapter == null || !isBluetoothEnabled()) {
             return false
@@ -310,6 +315,7 @@ class BluetoothService @Inject constructor(
             bluetoothSocket = device.createRfcommSocketToServiceRecord(MY_UUID)
             bluetoothSocket?.connect()
             outputStream = bluetoothSocket?.outputStream
+            _lastConnectedDeviceAddress = deviceAddress
             return true
         } catch (e: SecurityException) {
             e.printStackTrace()
