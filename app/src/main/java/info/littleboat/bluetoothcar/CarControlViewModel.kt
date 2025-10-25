@@ -1,25 +1,27 @@
 package info.littleboat.bluetoothcar
 
+import android.Manifest
 import android.bluetooth.BluetoothDevice
+import androidx.annotation.RequiresPermission
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
+import info.littleboat.bluetoothcar.di.IBluetoothService
+import info.littleboat.bluetoothcar.services.PairingStatus
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import kotlinx.coroutines.isActive
-import kotlinx.coroutines.delay
-
-import info.littleboat.bluetoothcar.services.PairingStatus
-import androidx.annotation.RequiresPermission
-import android.Manifest
-import info.littleboat.bluetoothcar.di.IBluetoothService
-import kotlinx.coroutines.Job
 import javax.inject.Inject
 
 @HiltViewModel
@@ -58,6 +60,40 @@ class CarControlViewModel @Inject constructor(
 
     private var _deviceBeingPaired: BluetoothDevice? = null
 
+    private val _isFrontLightOn = MutableStateFlow(false)
+    val isFrontLightOn: StateFlow<Boolean> = _isFrontLightOn.asStateFlow()
+
+    private val _isBackLightOn = MutableStateFlow(false)
+    val isBackLightOn: StateFlow<Boolean> = _isBackLightOn.asStateFlow()
+
+    // CarControlViewModel.kt
+
+    val uiState: StateFlow<CarControlUiState> = combine(
+        isConnecting,
+        isConnected,
+        connectionError,
+        pairingStatus,
+        isBluetoothEnabled,
+        hasLastConnectedDevice,
+        isFrontLightOn,
+        isBackLightOn
+    ) { values ->
+        CarControlUiState(
+            isConnecting = values[0] as Boolean,
+            isConnected = values[1] as Boolean,
+            connectionError = values[2] as? String,
+            pairingStatus = values[3] as PairingStatus,
+            isBluetoothEnabled = values[4] as Boolean,
+            hasLastConnectedDevice = values[5] as Boolean,
+            isFrontLightOn = values[6] as Boolean,
+            isBackLightOn = values[7] as Boolean
+        )
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5000),
+        initialValue = CarControlUiState()
+    )
+
 
     init {
         checkBluetoothStatus()
@@ -87,13 +123,6 @@ class CarControlViewModel @Inject constructor(
     @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
     private fun updateFilteredDevices(devices: List<BluetoothDevice>, filterUnnamed: Boolean) {
         viewModelScope.launch(Dispatchers.Default) {
-            val filtered = if (filterUnnamed) {
-                devices.filter {
-                    !it.name.isNullOrEmpty()
-                }
-            } else {
-                devices
-            }
             // Sort devices: named devices first, then by recency (newest first)
             val sortedDevices = devices.withIndex()
                 .filter { if (filterUnnamed) !it.value.name.isNullOrEmpty() else true }
@@ -237,10 +266,6 @@ class CarControlViewModel @Inject constructor(
     fun startMovingBackward() = startMoving("B")
     fun startTurningLeft() = startMoving("L")
     fun startTurningRight() = startMoving("R")
-    fun startMovingForwardLeft() = startMoving("G")
-    fun startMovingForwardRight() = startMoving("I")
-    fun startMovingBackwardLeft() = startMoving("H")
-    fun startMovingBackwardRight() = startMoving("J")
 
     private fun startMoving(command: String) {
         movementJob?.cancel() // Cancel any existing movement job
@@ -260,10 +285,12 @@ class CarControlViewModel @Inject constructor(
     }
 
     fun toggleFrontLight(isOn: Boolean) {
+        _isFrontLightOn.value = isOn
         sendCommand(if (isOn) "W" else "w")
     }
 
     fun toggleBackLight(isOn: Boolean) {
+        _isBackLightOn.value = isOn
         sendCommand(if (isOn) "U" else "u")
     }
 
@@ -271,7 +298,7 @@ class CarControlViewModel @Inject constructor(
         // This function is no longer used directly for press/hold
     }
 
-    private var hornJob: kotlinx.coroutines.Job? = null
+    private var hornJob: Job? = null
 
     fun startHorn() {
         hornJob?.cancel() // Cancel any existing horn job
@@ -319,3 +346,14 @@ class CarControlViewModel @Inject constructor(
         stopDiscovery()
     }
 }
+
+data class CarControlUiState(
+    val isConnecting: Boolean = false,
+    val isConnected: Boolean = false,
+    val connectionError: String? = null,
+    val pairingStatus: PairingStatus = PairingStatus.IDLE,
+    val isBluetoothEnabled: Boolean = false,
+    val hasLastConnectedDevice: Boolean = false,
+    val isFrontLightOn: Boolean = false,
+    val isBackLightOn: Boolean = false
+)
