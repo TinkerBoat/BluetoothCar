@@ -14,17 +14,17 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.delay
-import info.littleboat.bluetoothcar.services.BluetoothService
+
 import info.littleboat.bluetoothcar.services.PairingStatus
 import androidx.annotation.RequiresPermission
 import android.Manifest
-import android.util.Log
+import info.littleboat.bluetoothcar.di.IBluetoothService
 import kotlinx.coroutines.Job
 import javax.inject.Inject
 
 @HiltViewModel
 class CarControlViewModel @Inject constructor(
-    private val bluetoothService: BluetoothService
+    private val bluetoothService: IBluetoothService
 ) : ViewModel() {
     private val _isConnected = MutableStateFlow(false)
     val isConnected: StateFlow<Boolean> = _isConnected.asStateFlow()

@@ -1,5 +1,7 @@
 package info.littleboat.bluetoothcar.services
 
+import info.littleboat.bluetoothcar.di.IBluetoothService
+
 import android.Manifest
 import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothDevice
@@ -16,8 +18,10 @@ import kotlinx.coroutines.flow.StateFlow
 import java.io.OutputStream
 import java.util.UUID
 import javax.inject.Inject
+import javax.inject.Singleton
 import kotlinx.coroutines.flow.asStateFlow
 import android.util.Log
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
 
 
@@ -29,20 +33,21 @@ enum class PairingStatus {
     NEEDS_USER_INPUT
 }
 
-class BluetoothService @Inject constructor(
-    private val context: Context,
+@Singleton
+class BluetoothServiceImpl @Inject constructor(
+    @ApplicationContext private val context: Context,
     private val bluetoothAdapter: BluetoothAdapter?
-) {
+) : IBluetoothService {
 
     private var bluetoothSocket: BluetoothSocket? = null
     private var outputStream: OutputStream? = null
     private var _lastConnectedDeviceAddress: String? = null
 
     private val _discoveredDevices = MutableStateFlow<List<BluetoothDevice>>(emptyList())
-    val discoveredDevices: StateFlow<List<BluetoothDevice>> = _discoveredDevices
+    override val discoveredDevices: StateFlow<List<BluetoothDevice>> = _discoveredDevices
 
     private val _pairingStatus = MutableStateFlow(PairingStatus.IDLE)
-    val pairingStatus: StateFlow<PairingStatus> = _pairingStatus.asStateFlow()
+    override val pairingStatus: StateFlow<PairingStatus> = _pairingStatus.asStateFlow()
 
     private val _pinsToTry = MutableStateFlow<List<String>>(emptyList())
     private var _deviceToPair: BluetoothDevice? = null
@@ -186,7 +191,7 @@ class BluetoothService @Inject constructor(
     }
 
     @RequiresPermission(Manifest.permission.BLUETOOTH_SCAN)
-    fun startDiscovery() {
+    override fun startDiscovery() {
         // Permission check (BLUETOOTH_SCAN on API 31+, ADMIN otherwise)
         val scanPermission = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             Manifest.permission.BLUETOOTH_SCAN
@@ -211,7 +216,7 @@ class BluetoothService @Inject constructor(
         bluetoothAdapter?.startDiscovery()
     }
 
-    fun stopDiscovery() {
+    override fun stopDiscovery() {
         if (isDiscoveryReceiverRegistered) {
             try {
                 context.unregisterReceiver(bluetoothDeviceReceiver)
@@ -235,7 +240,7 @@ class BluetoothService @Inject constructor(
     }
 
     @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
-    fun pairDevice(device: BluetoothDevice) {
+    override fun pairDevice(device: BluetoothDevice) {
         _deviceToPair = device
         _pinsToTry.value = listOf("1234", "0000")
         startPairingProcess(device, _pinsToTry.value)
@@ -264,16 +269,16 @@ class BluetoothService @Inject constructor(
         }
     }
 
-    fun resetPairingStatus() {
+    override fun resetPairingStatus() {
         _pairingStatus.value = PairingStatus.IDLE
     }
 
-    fun isBluetoothEnabled(): Boolean {
+    override fun isBluetoothEnabled(): Boolean {
         return bluetoothAdapter?.isEnabled ?: false
     }
 
     @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
-    fun getPairedDevices(): Set<BluetoothDevice>? {
+    override fun getPairedDevices(): Set<BluetoothDevice>? {
         val permission = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             Manifest.permission.BLUETOOTH_CONNECT
         } else {
@@ -290,11 +295,11 @@ class BluetoothService @Inject constructor(
         return bluetoothAdapter?.bondedDevices
     }
 
-    fun getLastConnectedDeviceAddress(): String? {
+    override fun getLastConnectedDeviceAddress(): String? {
         return _lastConnectedDeviceAddress
     }
 
-    fun connectToDevice(deviceAddress: String): Boolean {
+    override fun connectToDevice(deviceAddress: String): Boolean {
         if (bluetoothAdapter == null || !isBluetoothEnabled()) {
             return false
         }
@@ -331,7 +336,7 @@ class BluetoothService @Inject constructor(
         }
     }
 
-    fun sendCommand(command: String): Boolean {
+    override fun sendCommand(command: String): Boolean {
         Log.d("BluetoothService", "Attempting to send command: $command")
         return try {
             outputStream?.write(command.toByteArray())
@@ -344,7 +349,7 @@ class BluetoothService @Inject constructor(
         }
     }
 
-    fun disconnect() {
+    override fun disconnect() {
         try {
             outputStream?.close()
             bluetoothSocket?.close()

@@ -26,6 +26,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.core.app.ActivityCompat
+import androidx.compose.ui.tooling.preview.Preview
+import kotlinx.coroutines.flow.MutableStateFlow
+import info.littleboat.bluetoothcar.services.PairingStatus
+import android.bluetooth.BluetoothDevice
+import info.littleboat.bluetoothcar.di.IBluetoothService
+import kotlinx.coroutines.flow.StateFlow
+
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -95,4 +102,25 @@ fun BluetoothDeviceListScreen(viewModel: CarControlViewModel, onNavigateBack: ()
             }
         }
     }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun BluetoothDeviceListScreenPreview() {
+    val bluetoothService = object : IBluetoothService {
+        override val discoveredDevices: StateFlow<List<BluetoothDevice>> = MutableStateFlow(emptyList())
+        override val pairingStatus: StateFlow<PairingStatus> = MutableStateFlow(PairingStatus.IDLE)
+        override fun isBluetoothEnabled(): Boolean = true
+        override fun startDiscovery() {}
+        override fun stopDiscovery() {}
+        override fun connectToDevice(deviceAddress: String): Boolean = true
+        override fun disconnect() {}
+        override fun sendCommand(command: String): Boolean = true
+        override fun pairDevice(device: BluetoothDevice) {}
+        override fun resetPairingStatus() {}
+        override fun getPairedDevices(): Set<BluetoothDevice>? = null
+        override fun getLastConnectedDeviceAddress(): String? = null
+    }
+    val viewModel = CarControlViewModel(bluetoothService)
+    BluetoothDeviceListScreen(viewModel = viewModel, onNavigateBack = {})
 }

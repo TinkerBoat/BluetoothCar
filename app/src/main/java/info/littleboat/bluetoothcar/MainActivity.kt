@@ -10,35 +10,73 @@ import androidx.navigation.compose.rememberNavController
 import dagger.hilt.android.AndroidEntryPoint
 import info.littleboat.bluetoothcar.ui.theme.BluetoothCarTheme
 
+import androidx.compose.ui.tooling.preview.Preview
+import androidx.lifecycle.viewmodel.compose.viewModel
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.MutableStateFlow
+import android.bluetooth.BluetoothDevice
+import info.littleboat.bluetoothcar.services.PairingStatus
+import androidx.compose.runtime.Composable
+import info.littleboat.bluetoothcar.di.IBluetoothService
+
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
-
-    private val carControlViewModel: CarControlViewModel by viewModels()
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
         setContent {
             BluetoothCarTheme {
                 val navController = rememberNavController()
-                NavHost(navController = navController, startDestination = "control_screen") {
-                    composable("control_screen") {
-                        NewCarControlScreen(viewModel = carControlViewModel, onNavigateToDeviceList = {
-                            navController.navigate("device_list_screen")
-                        })
+                val viewModel: CarControlViewModel = viewModel()
+
+                NavHost(navController = navController, startDestination = "carControl") {
+                    composable("carControl") {
+                        NewCarControlScreen(viewModel) {
+                            navController.navigate("deviceList")
+                        }
                     }
-                    composable("device_list_screen") {
-                        BluetoothDeviceListScreen(viewModel = carControlViewModel, onNavigateBack = {
+                    composable("deviceList") {
+                        BluetoothDeviceListScreen(viewModel) {
                             navController.popBackStack()
-                        })
+                        }
                     }
                 }
             }
         }
     }
+}
 
-    override fun onDestroy() {
-        super.onDestroy()
-        carControlViewModel.disconnect()
+@Preview(showBackground = true)
+@Composable
+fun DefaultPreview() {
+    BluetoothCarTheme {
+        val navController = rememberNavController()
+        val bluetoothService = object : IBluetoothService {
+            override val discoveredDevices: StateFlow<List<BluetoothDevice>> = MutableStateFlow(emptyList())
+            override val pairingStatus: StateFlow<PairingStatus> = MutableStateFlow(PairingStatus.IDLE)
+            override fun isBluetoothEnabled(): Boolean = true
+            override fun startDiscovery() {}
+            override fun stopDiscovery() {}
+            override fun connectToDevice(deviceAddress: String): Boolean = true
+            override fun disconnect() {}
+            override fun sendCommand(command: String): Boolean = true
+            override fun pairDevice(device: BluetoothDevice) {}
+            override fun resetPairingStatus() {}
+            override fun getPairedDevices(): Set<BluetoothDevice>? = null
+            override fun getLastConnectedDeviceAddress(): String? = null
+        }
+        val viewModel = CarControlViewModel(bluetoothService)
+
+        NavHost(navController = navController, startDestination = "carControl") {
+            composable("carControl") {
+                NewCarControlScreen(viewModel) {
+                    navController.navigate("deviceList")
+                }
+            }
+            composable("deviceList") {
+                BluetoothDeviceListScreen(viewModel) {
+                    navController.popBackStack()
+                }
+            }
+        }
     }
 }

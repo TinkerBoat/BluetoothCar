@@ -3,28 +3,36 @@ package info.littleboat.bluetoothcar
 import android.Manifest
 import android.app.Activity
 import android.bluetooth.BluetoothAdapter
+import android.bluetooth.BluetoothDevice
 import android.content.Intent
 import android.os.Build
 import android.speech.RecognizerIntent
 import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowLeft
+import androidx.compose.material.icons.filled.KeyboardArrowRight
+import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -34,31 +42,18 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.dp
-import com.google.accompanist.permissions.ExperimentalPermissionsApi
-import com.google.accompanist.permissions.rememberMultiplePermissionsState
-import info.littleboat.bluetoothcar.services.PairingStatus
-
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.RowScope
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
-import androidx.compose.material.icons.filled.KeyboardArrowDown
-import androidx.compose.material.icons.filled.KeyboardArrowLeft
-import androidx.compose.material.icons.filled.KeyboardArrowRight
-import androidx.compose.material.icons.filled.KeyboardArrowUp
-import androidx.compose.material.icons.filled.Mic
 import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.activity.result.ActivityResultLauncher
-
-import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.foundation.layout.Box
-
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
 import androidx.constraintlayout.compose.ConstraintLayout
+import com.google.accompanist.permissions.ExperimentalPermissionsApi
+import com.google.accompanist.permissions.rememberMultiplePermissionsState
+import info.littleboat.bluetoothcar.di.IBluetoothService
+import info.littleboat.bluetoothcar.services.PairingStatus
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 
 @OptIn(ExperimentalPermissionsApi::class, ExperimentalMaterial3Api::class)
 @Composable
@@ -247,6 +242,36 @@ fun NewCarControlScreen(viewModel: CarControlViewModel, onNavigateToDeviceList: 
 }
 
 @Composable
+fun PressAndHoldButton(
+    onPress: () -> Unit,
+    onRelease: () -> Unit,
+    modifier: Modifier = Modifier,
+    content: @Composable RowScope.() -> Unit
+) {
+    Button(
+        onClick = { /* Handled by pointerInput */ },
+        modifier = modifier.pointerInput(Unit) {
+            awaitPointerEventScope {
+                while (true) {
+                    val event = awaitPointerEvent()
+                    when (event.type) {
+                        PointerEventType.Press -> {
+                            onPress()
+                        }
+                        PointerEventType.Release -> {
+                            onRelease()
+                        }
+                    }
+                }
+            }
+        }
+    ) {
+        Row {
+            content()
+        }
+    }
+}
+@Composable
 fun ControlPanel(viewModel: CarControlViewModel, speechRecognizerLauncher: ActivityResultLauncher<Intent>, onNavigateToDeviceList: () -> Unit, modifier: Modifier = Modifier) {
     ConstraintLayout(
         modifier = modifier
@@ -265,22 +290,54 @@ fun ControlPanel(viewModel: CarControlViewModel, speechRecognizerLauncher: Activ
                 end.linkTo(actions.start)
             }
         ) {
-            PressAndHoldButton(onPress = { viewModel.startMovingForward() }, onRelease = { viewModel.stopMoving() }, modifier = Modifier.size(100.dp)) {
-                Icon(Icons.Default.KeyboardArrowUp, contentDescription = "Forward", modifier = Modifier.size(90.dp))
+            PressAndHoldButton(
+                onPress = { viewModel.startMovingForward() },
+                onRelease = { viewModel.stopMoving() },
+                modifier = Modifier.size(100.dp)
+            ) {
+                Icon(
+                    Icons.Default.KeyboardArrowUp,
+                    contentDescription = "Forward",
+                    modifier = Modifier.size(90.dp)
+                )
             }
             Spacer(modifier = Modifier.height(8.dp))
             Row {
-                PressAndHoldButton(onPress = { viewModel.startTurningLeft() }, onRelease = { viewModel.stopMoving() }, modifier = Modifier.size(100.dp)) {
-                    Icon(Icons.Default.KeyboardArrowLeft, contentDescription = "Left", modifier = Modifier.size(90.dp))
+                PressAndHoldButton(
+                    onPress = { viewModel.startTurningLeft() },
+                    onRelease = { viewModel.stopMoving() },
+                    modifier = Modifier.size(100.dp)
+                ) {
+                    Icon(
+                        Icons.Default.KeyboardArrowLeft,
+                        contentDescription = "Left",
+                        modifier = Modifier.size(90.dp)
+                    )
                 }
                 Spacer(modifier = Modifier.width(40.dp))
-                PressAndHoldButton(onPress = { viewModel.startTurningRight() }, onRelease = { viewModel.stopMoving() }, modifier = Modifier.size(100.dp)) {
-                    Icon(Icons.Default.KeyboardArrowRight, contentDescription = "Right", modifier = Modifier.size(90.dp))
+                PressAndHoldButton(
+                    onPress = { viewModel.startTurningRight() },
+                    onRelease = { viewModel.stopMoving() },
+                    modifier = Modifier.size(100.dp)
+                ) {
+                    Icon(
+                        Icons.Default.KeyboardArrowRight,
+                        contentDescription = "Right",
+                        modifier = Modifier.size(90.dp)
+                    )
                 }
             }
             Spacer(modifier = Modifier.height(8.dp))
-            PressAndHoldButton(onPress = { viewModel.startMovingBackward() }, onRelease = { viewModel.stopMoving() }, modifier = Modifier.size(100.dp)) {
-                Icon(Icons.Default.KeyboardArrowDown, contentDescription = "Backward", modifier = Modifier.size(90.dp))
+            PressAndHoldButton(
+                onPress = { viewModel.startMovingBackward() },
+                onRelease = { viewModel.stopMoving() },
+                modifier = Modifier.size(100.dp)
+            ) {
+                Icon(
+                    Icons.Default.KeyboardArrowDown,
+                    contentDescription = "Backward",
+                    modifier = Modifier.size(90.dp)
+                )
             }
         }
 
@@ -317,50 +374,57 @@ fun ControlPanel(viewModel: CarControlViewModel, speechRecognizerLauncher: Activ
                 }) { Text("Back Light") }
             }
 
-            PressAndHoldButton(onPress = { viewModel.startHorn() }, onRelease = { viewModel.stopHorn() }) { Text("Horn") }
+            PressAndHoldButton(
+                onPress = { viewModel.startHorn() },
+                onRelease = { viewModel.stopHorn() }) { Text("Horn") }
 
             // Voice Command Button
             IconButton(onClick = {
                 val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
-                    putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
+                    putExtra(
+                        RecognizerIntent.EXTRA_LANGUAGE_MODEL,
+                        RecognizerIntent.LANGUAGE_MODEL_FREE_FORM
+                    )
                     putExtra(RecognizerIntent.EXTRA_LANGUAGE, "en-US")
                     putExtra(RecognizerIntent.EXTRA_PROMPT, "Speak a command")
                 }
                 speechRecognizerLauncher.launch(intent)
             }) {
-                Icon(Icons.Filled.Mic, contentDescription = "Voice Command", modifier = Modifier.size(48.dp))
+                Icon(
+                    Icons.Filled.Mic,
+                    contentDescription = "Voice Command",
+                    modifier = Modifier.size(48.dp)
+                )
             }
         }
     }
 }
 
+@Preview(showBackground = true)
 @Composable
-fun PressAndHoldButton(
-    onPress: () -> Unit,
-    onRelease: () -> Unit,
-    modifier: Modifier = Modifier,
-    content: @Composable RowScope.() -> Unit
-) {
-    Button(
-        onClick = { /* Handled by pointerInput */ },
-        modifier = modifier.pointerInput(Unit) {
-            awaitPointerEventScope {
-                while (true) {
-                    val event = awaitPointerEvent()
-                    when (event.type) {
-                        PointerEventType.Press -> {
-                            onPress()
-                        }
-                        PointerEventType.Release -> {
-                            onRelease()
-                        }
-                    }
-                }
-            }
-        }
-    ) {
-        Row {
-            content()
-        }
+fun ControlPanelPreview() {
+    val bluetoothService = object : IBluetoothService {
+        override val discoveredDevices: StateFlow<List<BluetoothDevice>> =
+            MutableStateFlow(emptyList())
+        override val pairingStatus: StateFlow<PairingStatus> = MutableStateFlow(PairingStatus.IDLE)
+        override fun isBluetoothEnabled(): Boolean = true
+        override fun startDiscovery() {}
+        override fun stopDiscovery() {}
+        override fun connectToDevice(deviceAddress: String): Boolean = true
+        override fun disconnect() {}
+        override fun sendCommand(command: String): Boolean = true
+        override fun pairDevice(device: BluetoothDevice) {}
+        override fun resetPairingStatus() {}
+        override fun getPairedDevices(): Set<BluetoothDevice>? = null
+        override fun getLastConnectedDeviceAddress(): String? = null
     }
+    val viewModel = CarControlViewModel(bluetoothService)
+    ControlPanel(
+        viewModel = viewModel,
+        speechRecognizerLauncher = rememberLauncherForActivityResult(
+            contract = ActivityResultContracts.StartActivityForResult()
+        ) { },
+        onNavigateToDeviceList = {})
+
+
 }
