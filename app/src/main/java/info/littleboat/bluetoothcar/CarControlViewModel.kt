@@ -234,9 +234,9 @@ class CarControlViewModel @Inject constructor(
 
     fun setSpeed(speed: String) {
         val command = when (speed) {
-            "high" -> "1"
-            "medium" -> "2"
-            "low" -> "3"
+            "high" -> "q"
+            "medium" -> "3"
+            "low" -> "1"
             else -> ""
         }
         sendCommand(command)
