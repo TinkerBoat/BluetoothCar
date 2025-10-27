@@ -35,6 +35,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -58,9 +59,27 @@ import info.littleboat.bluetoothcar.services.PairingStatus
 @Composable
 fun NewCarControlScreen(viewModel: CarControlViewModel, onNavigateToDeviceList: () -> Unit) {
     val uiState by viewModel.uiState.collectAsState()
+    var showEnableBluetoothDialog by remember { mutableStateOf(false) }
+    var navigateToDeviceListAfterEnable by remember { mutableStateOf(false) }
+
+    val checkBluetoothAndNavigate: () -> Unit = {
+        val btAdapter = BluetoothAdapter.getDefaultAdapter()
+        if (btAdapter?.isEnabled == true) {
+            onNavigateToDeviceList()
+        } else {
+            navigateToDeviceListAfterEnable = true
+            showEnableBluetoothDialog = true
+        }
+    }
 
     // --- Permissions Handling ---
-    val bluetoothPermissionsState = rememberMultiplePermissionsState(permissions = getPermissionsToRequest())
+    val bluetoothPermissionsState = rememberMultiplePermissionsState(
+        permissions = getPermissionsToRequest()
+    ) { permissionsResult ->
+        if (permissionsResult.values.all { it }) {
+            checkBluetoothAndNavigate()
+        }
+    }
     val recordAudioPermissionState = rememberPermissionState(permission = Manifest.permission.RECORD_AUDIO)
 
 
@@ -79,81 +98,89 @@ fun NewCarControlScreen(viewModel: CarControlViewModel, onNavigateToDeviceList: 
         viewModel.checkBluetoothStatus()
     }
 
+    LaunchedEffect(uiState.isBluetoothEnabled) {
+        if (uiState.isBluetoothEnabled && navigateToDeviceListAfterEnable) {
+            onNavigateToDeviceList()
+            navigateToDeviceListAfterEnable = false // Reset flag
+        }
+    }
+
+    if (showEnableBluetoothDialog) {
+        BluetoothDisabledDialog {
+            val intent = Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE)
+            enableBluetoothLauncher.launch(intent)
+            showEnableBluetoothDialog = false
+        }
+    }
+
     // --- UI Rendering ---
     Box(modifier = Modifier.fillMaxSize()) {
-        if (!uiState.isBluetoothEnabled) {
-            BluetoothDisabledDialog {
-                val intent = Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE)
-                enableBluetoothLauncher.launch(intent)
-            }
-        } else {
-            // Main content when Bluetooth and permissions are ready
-            ConstraintLayout(modifier = Modifier.fillMaxSize()) {
-                val (reconnectButton, mainContent) = createRefs()
+        // Main content when Bluetooth and permissions are ready
+        ConstraintLayout(modifier = Modifier.fillMaxSize()) {
+            val (reconnectButton, mainContent) = createRefs()
 
-                if (uiState.hasLastConnectedDevice || uiState.isConnected) {
-                    ReconnectButton(
-                        uiState = uiState,
-                        onClick = {
-                            if (uiState.isConnected) {
-                                viewModel.disconnect()
-                                onNavigateToDeviceList()
+            if (uiState.hasLastConnectedDevice || uiState.isConnected) {
+                ReconnectButton(
+                    uiState = uiState,
+                    onClick = {
+                        if (uiState.isConnected) {
+                            viewModel.disconnect()
+                            onNavigateToDeviceList()
+                        } else {
+                            viewModel.reconnectToLastDevice()
+                        }
+                    },
+                    modifier = Modifier.constrainAs(reconnectButton) {
+                        top.linkTo(parent.top, margin = 16.dp)
+                        end.linkTo(parent.end, margin = 16.dp)
+                    }
+                )
+            }
+
+            Box(modifier = Modifier.constrainAs(mainContent) {
+                top.linkTo(parent.top)
+                bottom.linkTo(parent.bottom)
+                start.linkTo(parent.start)
+                end.linkTo(parent.end)
+            }) {
+                when {
+                    uiState.isConnected -> ControlPanel(
+                        isFrontLightOn = uiState.isFrontLightOn,
+                        isBackLightOn = uiState.isBackLightOn,
+                        onStartMovingForward = viewModel::startMovingForward,
+                        onStartMovingBackward = viewModel::startMovingBackward,
+                        onStartTurningLeft = viewModel::startTurningLeft,
+                        onStartTurningRight = viewModel::startTurningRight,
+                        onStopMoving = viewModel::stopMoving,
+                        onStartHorn = viewModel::startHorn,
+                        onStopHorn = viewModel::stopHorn,
+                        onToggleFrontLight = { viewModel.toggleFrontLight(!uiState.isFrontLightOn) },
+                        onToggleBackLight = { viewModel.toggleBackLight(!uiState.isBackLightOn) },
+                        onSetSpeed = viewModel::setSpeed,
+                        onVoiceCommandClick = {
+                            if (recordAudioPermissionState.status.isGranted) {
+                                val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
+                                    putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
+                                    putExtra(RecognizerIntent.EXTRA_LANGUAGE, "en-US")
+                                    putExtra(RecognizerIntent.EXTRA_PROMPT, "Speak a command")
+                                }
+                                speechRecognizerLauncher.launch(intent)
                             } else {
-                                viewModel.reconnectToLastDevice()
+                                recordAudioPermissionState.launchPermissionRequest()
                             }
-                        },
-                        modifier = Modifier.constrainAs(reconnectButton) {
-                            top.linkTo(parent.top, margin = 16.dp)
-                            end.linkTo(parent.end, margin = 16.dp)
                         }
                     )
-                }
-
-                Box(modifier = Modifier.constrainAs(mainContent) {
-                    top.linkTo(parent.top)
-                    bottom.linkTo(parent.bottom)
-                    start.linkTo(parent.start)
-                    end.linkTo(parent.end)
-                }) {
-                    when {
-                        uiState.isConnected -> ControlPanel(
-                            isFrontLightOn = uiState.isFrontLightOn,
-                            isBackLightOn = uiState.isBackLightOn,
-                            onStartMovingForward = viewModel::startMovingForward,
-                            onStartMovingBackward = viewModel::startMovingBackward,
-                            onStartTurningLeft = viewModel::startTurningLeft,
-                            onStartTurningRight = viewModel::startTurningRight,
-                            onStopMoving = viewModel::stopMoving,
-                            onStartHorn = viewModel::startHorn,
-                            onStopHorn = viewModel::stopHorn,
-                            onToggleFrontLight = { viewModel.toggleFrontLight(!uiState.isFrontLightOn) },
-                            onToggleBackLight = { viewModel.toggleBackLight(!uiState.isBackLightOn) },
-                            onSetSpeed = viewModel::setSpeed,
-                            onVoiceCommandClick = {
-                                if (recordAudioPermissionState.status.isGranted) {
-                                    val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
-                                        putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
-                                        putExtra(RecognizerIntent.EXTRA_LANGUAGE, "en-US")
-                                        putExtra(RecognizerIntent.EXTRA_PROMPT, "Speak a command")
-                                    }
-                                    speechRecognizerLauncher.launch(intent)
-                                } else {
-                                    recordAudioPermissionState.launchPermissionRequest()
-                                }
+                    uiState.isConnecting || uiState.pairingStatus == PairingStatus.PAIRING -> {
+                        ConnectingIndicator(isConnecting = uiState.isConnecting)
+                    }
+                    else -> {
+                        SelectDeviceButton(onClick = {
+                            if (bluetoothPermissionsState.allPermissionsGranted) {
+                                checkBluetoothAndNavigate()
+                            } else {
+                                bluetoothPermissionsState.launchMultiplePermissionRequest()
                             }
-                        )
-                        uiState.isConnecting || uiState.pairingStatus == PairingStatus.PAIRING -> {
-                            ConnectingIndicator(isConnecting = uiState.isConnecting)
-                        }
-                        else -> {
-                            SelectDeviceButton(onClick = {
-                                if (bluetoothPermissionsState.allPermissionsGranted) {
-                                    onNavigateToDeviceList()
-                                } else {
-                                    bluetoothPermissionsState.launchMultiplePermissionRequest()
-                                }
-                            })
-                        }
+                        })
                     }
                 }
             }
