@@ -63,6 +63,7 @@ fun DefaultPreview() {
             override fun resetPairingStatus() {}
             override fun getPairedDevices(): Set<BluetoothDevice>? = null
             override fun getLastConnectedDeviceAddress(): String? = null
+            override fun providePinAndRetryPairing(pin: String) {}
         }
         val viewModel = CarControlViewModel(bluetoothService)
 
