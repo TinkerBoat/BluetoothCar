@@ -138,8 +138,6 @@ class BluetoothServiceImpl @Inject constructor(
             val action = intent.action
 
             if (action == BluetoothDevice.ACTION_BOND_STATE_CHANGED) {
-                val device: BluetoothDevice? =
-                    intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE)
                 val bondState =
                     intent.getIntExtra(BluetoothDevice.EXTRA_BOND_STATE, BluetoothDevice.ERROR)
                 val previousBondState = intent.getIntExtra(
@@ -162,17 +160,17 @@ class BluetoothServiceImpl @Inject constructor(
 
                     BluetoothDevice.BOND_NONE -> {
                         if (previousBondState == BluetoothDevice.BOND_BONDING) {
+                            // Unregister the receivers to clean up the previous attempt.
+                            context.unregisterReceiver(this)
+                            context.unregisterReceiver(pairingRequestReceiver)
                             if (_pinsToTry.value.isNotEmpty()) {
                                 Log.d("BluetoothService", "Pairing failed with current PIN, trying next...")
-                                context.unregisterReceiver(this)
-                                context.unregisterReceiver(pairingRequestReceiver)
                                 _deviceToPair?.let { device ->
                                     startPairingProcess(device, _pinsToTry.value)
                                 }
                             } else {
                                 _pairingStatus.value = PairingStatus.NEEDS_USER_INPUT
-                                context.unregisterReceiver(this)
-                                context.unregisterReceiver(pairingRequestReceiver)
+                                _deviceToPair?.createBond()
                                 _deviceToPair = null
                             }
                         }
@@ -256,16 +254,6 @@ class BluetoothServiceImpl @Inject constructor(
             device.createBond()
         } catch (e: SecurityException) {
             _pairingStatus.value = PairingStatus.FAILED
-        }
-    }
-
-    fun providePinAndRetry(pin: String) {
-        _deviceToPair?.let { device ->
-            _pinsToTry.value = listOf(pin)
-            _pairingStatus.value = PairingStatus.PAIRING
-            startPairingProcess(device, _pinsToTry.value)
-        } ?: run {
-            Log.e("BluetoothService", "No device to pair with when providing PIN.")
         }
     }
 
