@@ -35,7 +35,6 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -45,12 +44,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.constraintlayout.compose.ConstraintLayout
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
+import com.google.accompanist.permissions.isGranted
 import com.google.accompanist.permissions.rememberMultiplePermissionsState
+import com.google.accompanist.permissions.rememberPermissionState
 import info.littleboat.bluetoothcar.services.PairingStatus
 
 
@@ -60,19 +60,9 @@ fun NewCarControlScreen(viewModel: CarControlViewModel, onNavigateToDeviceList: 
     val uiState by viewModel.uiState.collectAsState()
 
     // --- Permissions Handling ---
-    val permissionsToRequest = getPermissionsToRequest()
-    val permissionsState = rememberMultiplePermissionsState(permissions = permissionsToRequest)
+    val bluetoothPermissionsState = rememberMultiplePermissionsState(permissions = getPermissionsToRequest())
+    val recordAudioPermissionState = rememberPermissionState(permission = Manifest.permission.RECORD_AUDIO)
 
-    LaunchedEffect(Unit) {
-        if (!permissionsState.allPermissionsGranted) {
-            permissionsState.launchMultiplePermissionRequest()
-        }
-    }
-    LaunchedEffect(permissionsState.allPermissionsGranted) {
-        if (permissionsState.allPermissionsGranted) {
-            viewModel.onPermissionsGranted()
-        }
-    }
 
     // --- Activity Result Launchers ---
     val speechRecognizerLauncher = rememberLauncherForActivityResult(
@@ -95,10 +85,6 @@ fun NewCarControlScreen(viewModel: CarControlViewModel, onNavigateToDeviceList: 
             BluetoothDisabledDialog {
                 val intent = Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE)
                 enableBluetoothLauncher.launch(intent)
-            }
-        } else if (!permissionsState.allPermissionsGranted) {
-            PermissionsNotGrantedContent {
-                permissionsState.launchMultiplePermissionRequest()
             }
         } else {
             // Main content when Bluetooth and permissions are ready
@@ -144,19 +130,29 @@ fun NewCarControlScreen(viewModel: CarControlViewModel, onNavigateToDeviceList: 
                             onToggleBackLight = { viewModel.toggleBackLight(!uiState.isBackLightOn) },
                             onSetSpeed = viewModel::setSpeed,
                             onVoiceCommandClick = {
-                                val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
-                                    putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
-                                    putExtra(RecognizerIntent.EXTRA_LANGUAGE, "en-US")
-                                    putExtra(RecognizerIntent.EXTRA_PROMPT, "Speak a command")
+                                if (recordAudioPermissionState.status.isGranted) {
+                                    val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
+                                        putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
+                                        putExtra(RecognizerIntent.EXTRA_LANGUAGE, "en-US")
+                                        putExtra(RecognizerIntent.EXTRA_PROMPT, "Speak a command")
+                                    }
+                                    speechRecognizerLauncher.launch(intent)
+                                } else {
+                                    recordAudioPermissionState.launchPermissionRequest()
                                 }
-                                speechRecognizerLauncher.launch(intent)
                             }
                         )
                         uiState.isConnecting || uiState.pairingStatus == PairingStatus.PAIRING -> {
                             ConnectingIndicator(isConnecting = uiState.isConnecting)
                         }
                         else -> {
-                            SelectDeviceButton(onClick = onNavigateToDeviceList)
+                            SelectDeviceButton(onClick = {
+                                if (bluetoothPermissionsState.allPermissionsGranted) {
+                                    onNavigateToDeviceList()
+                                } else {
+                                    bluetoothPermissionsState.launchMultiplePermissionRequest()
+                                }
+                            })
                         }
                     }
                 }
@@ -318,26 +314,6 @@ private fun BluetoothDisabledDialog(onConfirm: () -> Unit) {
 }
 
 @Composable
-private fun PermissionsNotGrantedContent(onGrantClick: () -> Unit) {
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center,
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp)
-    ) {
-        Text(
-            text = "This app requires Bluetooth, Location, and Microphone permissions to function correctly. Please grant them.",
-            textAlign = TextAlign.Center
-        )
-        Spacer(Modifier.height(16.dp))
-        Button(onClick = onGrantClick) {
-            Text("Grant Permissions")
-        }
-    }
-}
-
-@Composable
 private fun ReconnectButton(uiState: CarControlUiState, onClick: () -> Unit, modifier: Modifier = Modifier) {
     Button(
         onClick = onClick,
@@ -434,15 +410,13 @@ private fun getPermissionsToRequest(): List<String> {
         listOf(
             Manifest.permission.BLUETOOTH_SCAN,
             Manifest.permission.BLUETOOTH_CONNECT,
-            Manifest.permission.ACCESS_FINE_LOCATION,
-            Manifest.permission.RECORD_AUDIO
+            Manifest.permission.ACCESS_FINE_LOCATION
         )
     } else {
         listOf(
             Manifest.permission.BLUETOOTH,
             Manifest.permission.BLUETOOTH_ADMIN,
-            Manifest.permission.ACCESS_FINE_LOCATION,
-            Manifest.permission.RECORD_AUDIO
+            Manifest.permission.ACCESS_FINE_LOCATION
         )
     }
 }
