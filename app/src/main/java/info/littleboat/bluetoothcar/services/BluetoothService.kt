@@ -169,9 +169,9 @@ class BluetoothServiceImpl @Inject constructor(
                                     startPairingProcess(device, _pinsToTry.value)
                                 }
                             } else {
+                                Log.d("BluetoothService", "Automatic pairing failed. Awaiting user input from app UI.")
                                 _pairingStatus.value = PairingStatus.NEEDS_USER_INPUT
-                                _deviceToPair?.createBond()
-                                _deviceToPair = null
+                                // DO NOT clear the device reference here
                             }
                         }
                     }
@@ -186,6 +186,14 @@ class BluetoothServiceImpl @Inject constructor(
                 }
             }
         }
+    }
+
+    @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
+    override fun providePinAndRetryPairing(pin: String) {
+        val device = _deviceToPair ?: return
+        Log.d("BluetoothService", "Retrying pairing for ${device.address} with user-provided PIN.")
+        _pinsToTry.value = listOf(pin)
+        startPairingProcess(device, _pinsToTry.value)
     }
 
     @RequiresPermission(Manifest.permission.BLUETOOTH_SCAN)
@@ -240,7 +248,7 @@ class BluetoothServiceImpl @Inject constructor(
     @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
     override fun pairDevice(device: BluetoothDevice) {
         _deviceToPair = device
-        _pinsToTry.value = listOf("1234", "0000")
+        _pinsToTry.value = listOf("1234", "0000","2025","2026")
         startPairingProcess(device, _pinsToTry.value)
     }
 
@@ -259,6 +267,8 @@ class BluetoothServiceImpl @Inject constructor(
 
     override fun resetPairingStatus() {
         _pairingStatus.value = PairingStatus.IDLE
+        _deviceToPair = null // Clear the device reference
+        _pinsToTry.value = emptyList() // Clear any pending PINs
     }
 
     override fun isBluetoothEnabled(): Boolean {

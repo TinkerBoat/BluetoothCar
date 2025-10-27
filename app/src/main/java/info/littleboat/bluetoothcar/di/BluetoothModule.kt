@@ -47,4 +47,5 @@ interface IBluetoothService {
     fun resetPairingStatus()
     fun getPairedDevices(): Set<BluetoothDevice>?
     fun getLastConnectedDeviceAddress(): String?
+    fun providePinAndRetryPairing(pin: String)
 }

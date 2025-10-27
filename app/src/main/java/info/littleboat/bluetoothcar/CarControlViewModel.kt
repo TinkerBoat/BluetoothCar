@@ -189,6 +189,13 @@ class CarControlViewModel @Inject constructor(
         bluetoothService.resetPairingStatus()
     }
 
+    @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
+    fun submitPinForPairing(pin: String) {
+        viewModelScope.launch(Dispatchers.IO) {
+            bluetoothService.providePinAndRetryPairing(pin)
+        }
+    }
+
     @RequiresPermission(Manifest.permission.BLUETOOTH_SCAN)
     fun startDiscovery() {
         viewModelScope.launch(Dispatchers.IO) {
