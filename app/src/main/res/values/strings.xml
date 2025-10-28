@@ -1,3 +1,7 @@
 <resources>
     <string name="app_name">BluetoothCar</string>
+    <string name="welcome_message">Welcome to the Bluetooth Car Controller! This app uses Bluetooth
+        to connect to your car and requires location access to scan for nearby devices. Please grant
+        these permissions to get started.
+    </string>
 </resources>

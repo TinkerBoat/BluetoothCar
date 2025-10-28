@@ -8,6 +8,7 @@ import android.os.Build
 import android.speech.RecognizerIntent
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -44,7 +45,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.constraintlayout.compose.ConstraintLayout
@@ -174,13 +178,17 @@ fun NewCarControlScreen(viewModel: CarControlViewModel, onNavigateToDeviceList: 
                         ConnectingIndicator(isConnecting = uiState.isConnecting)
                     }
                     else -> {
-                        SelectDeviceButton(onClick = {
-                            if (bluetoothPermissionsState.allPermissionsGranted) {
-                                checkBluetoothAndNavigate()
-                            } else {
-                                bluetoothPermissionsState.launchMultiplePermissionRequest()
-                            }
-                        })
+                        WelcomeScreen(
+                            onGetStartedClick = {
+                                if (bluetoothPermissionsState.allPermissionsGranted) {
+                                    checkBluetoothAndNavigate()
+                                } else {
+                                    bluetoothPermissionsState.launchMultiplePermissionRequest()
+                                }
+                            },
+                            allPermissionsGranted = bluetoothPermissionsState.allPermissionsGranted,
+                            isBluetoothEnabled = uiState.isBluetoothEnabled
+                        )
                     }
                 }
             }
@@ -217,6 +225,40 @@ fun NewCarControlScreen(viewModel: CarControlViewModel, onNavigateToDeviceList: 
 }
 
 // --- Stateless UI Components ---
+
+@Composable
+private fun WelcomeScreen(
+    onGetStartedClick: () -> Unit,
+    allPermissionsGranted: Boolean,
+    isBluetoothEnabled: Boolean
+) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center,
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp)
+    ) {
+        Image(
+            painter = painterResource(id = R.drawable.tinkerboat_logo),
+            contentDescription = "Tinkerboat Logo",
+            modifier = Modifier.size(150.dp)
+        )
+        Spacer(Modifier.height(8.dp))
+        Text(
+            text = when {
+                !allPermissionsGranted -> stringResource(id = R.string.welcome_message)
+                !isBluetoothEnabled -> "Bluetooth is disabled. Please enable it to continue."
+                else -> "Ready to connect!"
+            },
+            textAlign = TextAlign.Center
+        )
+        Spacer(Modifier.height(32.dp))
+        Button(onClick = onGetStartedClick) {
+            Text("Get Started")
+        }
+    }
+}
 
 @Composable
 private fun ControlPanel(
@@ -367,15 +409,6 @@ private fun ConnectingIndicator(isConnecting: Boolean) {
         CircularProgressIndicator()
         Spacer(Modifier.height(8.dp))
         Text(if (isConnecting) "Connecting..." else "Pairing...")
-    }
-}
-
-@Composable
-private fun SelectDeviceButton(onClick: () -> Unit) {
-    Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
-        Button(onClick = onClick) {
-            Text("Select Device")
-        }
     }
 }
 
