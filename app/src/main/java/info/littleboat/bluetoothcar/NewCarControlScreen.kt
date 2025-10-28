@@ -354,8 +354,21 @@ private fun ControlPanel(
                 ) { Text("Low") }
             }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Button(onClick = onToggleFrontLight) { Text(if (isFrontLightOn) "Front Off" else "Front On") }
-                Button(onClick = onToggleBackLight) { Text(if (isBackLightOn) "Back Off" else "Back On") }
+                val selectedColor = MaterialTheme.colorScheme.primary
+                val unselectedColor = Color.Gray
+
+                Button(
+                    onClick = onToggleFrontLight,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = if (isFrontLightOn) selectedColor else unselectedColor
+                    )
+                ) { Text(if (isFrontLightOn) "Front Off" else "Front On") }
+                Button(
+                    onClick = onToggleBackLight,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = if (isBackLightOn) selectedColor else unselectedColor
+                    )
+                ) { Text(if (isBackLightOn) "Back Off" else "Back On") }
             }
             PressAndHoldButton(onPress = onStartHorn, onRelease = onStopHorn) { Text("Horn") }
             IconButton(onClick = onVoiceCommandClick) {
