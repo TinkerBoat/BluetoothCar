@@ -66,18 +66,18 @@ fun BluetoothDeviceListScreen(viewModel: CarControlViewModel, onNavigateBack: ()
             }
         }
 
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.padding(horizontal = 16.dp)
-        ) {
-            Switch(
-                checked = !filterUnnamedDevices,
-                onCheckedChange = { isChecked ->
-                    viewModel.onFilterUnnamedDevicesChanged(!isChecked)
-                }
-            )
-            Text("Show unnamed devices", modifier = Modifier.padding(start = 8.dp))
-        }
+//        Row(
+//            verticalAlignment = Alignment.CenterVertically,
+//            modifier = Modifier.padding(horizontal = 16.dp)
+//        ) {
+//            Switch(
+//                checked = !filterUnnamedDevices,
+//                onCheckedChange = { isChecked ->
+//                    viewModel.onFilterUnnamedDevicesChanged(!isChecked)
+//                }
+//            )
+//            Text("Show unnamed devices", modifier = Modifier.padding(start = 8.dp))
+//        }
 
         LazyColumn(modifier = Modifier.padding(16.dp)) {
             items(filteredDevices, key = { it.address }) { device ->
