@@ -117,11 +117,11 @@ class CarControlViewModel @Inject constructor(
         }
     }
 
-    @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
-    fun onFilterUnnamedDevicesChanged(isChecked: Boolean) {
-        _filterUnnamedDevices.value = isChecked
-        updateFilteredDevices(discoveredDevices.value, isChecked)
-    }
+//    @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
+//    fun onFilterUnnamedDevicesChanged(isChecked: Boolean) {
+//        _filterUnnamedDevices.value = isChecked
+//        updateFilteredDevices(discoveredDevices.value, isChecked)
+//    }
 
     @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
     private fun updateFilteredDevices(devices: List<BluetoothDevice>, filterUnnamed: Boolean) {
@@ -158,23 +158,23 @@ class CarControlViewModel @Inject constructor(
         _isBluetoothEnabled.value = bluetoothService.isBluetoothEnabled()
     }
 
-    @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
-    fun onPermissionsGranted() {
-        // Combine paired and discovered devices
-        viewModelScope.launch {
-            val paired = bluetoothService.getPairedDevices() ?: emptySet()
-            val initialDevices = (paired + bluetoothService.discoveredDevices.value).distinctBy { it.address }
-            _discoveredDevices.value = initialDevices
-            updateFilteredDevices(initialDevices, _filterUnnamedDevices.value)
-        }
-
-        bluetoothService.discoveredDevices.onEach { discovered ->
-            val paired = bluetoothService.getPairedDevices() ?: emptySet()
-            val allDevices = (paired + discovered).distinctBy { it.address }
-            _discoveredDevices.value = allDevices
-            updateFilteredDevices(allDevices, _filterUnnamedDevices.value)
-        }.launchIn(viewModelScope)
-    }
+//    @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
+//    fun onPermissionsGranted() {
+//        // Combine paired and discovered devices
+//        viewModelScope.launch {
+//            val paired = bluetoothService.getPairedDevices() ?: emptySet()
+//            val initialDevices = (paired + bluetoothService.discoveredDevices.value).distinctBy { it.address }
+//            _discoveredDevices.value = initialDevices
+//            updateFilteredDevices(initialDevices, _filterUnnamedDevices.value)
+//        }
+//
+//        bluetoothService.discoveredDevices.onEach { discovered ->
+//            val paired = bluetoothService.getPairedDevices() ?: emptySet()
+//            val allDevices = (paired + discovered).distinctBy { it.address }
+//            _discoveredDevices.value = allDevices
+//            updateFilteredDevices(allDevices, _filterUnnamedDevices.value)
+//        }.launchIn(viewModelScope)
+//    }
 
     @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
     fun pairDevice(device: BluetoothDevice) {
