@@ -170,7 +170,7 @@ fun NewCarControlScreen(viewModel: CarControlViewModel, onNavigateToDeviceList: 
                                 val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
                                     putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
                                     putExtra(RecognizerIntent.EXTRA_LANGUAGE, "en-US")
-                                    putExtra(RecognizerIntent.EXTRA_PROMPT, "Speak a command")
+                                    putExtra(RecognizerIntent.EXTRA_PROMPT, "Speak a command...")
                                 }
                                 speechRecognizerLauncher.launch(intent)
                             } else {
@@ -201,16 +201,16 @@ fun NewCarControlScreen(viewModel: CarControlViewModel, onNavigateToDeviceList: 
         // --- Dialogs for Errors and User Input ---
         uiState.connectionError?.let { error ->
             ErrorDialog(
-                title = "Connection Failed",
-                text = error,
+                title = stringResource(id = R.string.connection_failed_title),
+                text = stringResource(id = error),
                 onDismiss = { viewModel.clearConnectionError() }
             )
         }
 
         if (uiState.pairingStatus == PairingStatus.FAILED) {
             ErrorDialog(
-                title = "Pairing Failed",
-                text = "Could not pair with the selected device.",
+                title = stringResource(id = R.string.pairing_failed_title),
+                text = stringResource(id = R.string.pairing_failed_message),
                 onDismiss = { viewModel.resetPairingStatus() }
             )
         }
@@ -245,21 +245,21 @@ private fun WelcomeScreen(
     ) {
         Image(
             painter = painterResource(id = R.drawable.tinkerboat_logo),
-            contentDescription = "Tinkerboat Logo",
+            contentDescription = stringResource(id = R.string.tinkerboat_logo_description),
             modifier = Modifier.size(150.dp)
         )
         Spacer(Modifier.height(16.dp))
         Text(
             text = when {
                 !allPermissionsGranted -> stringResource(id = R.string.welcome_message)
-                !isBluetoothEnabled -> "Bluetooth is disabled. Please enable it to continue."
-                else -> "Ready to connect!"
+                !isBluetoothEnabled -> stringResource(id = R.string.bluetooth_disabled_message)
+                else -> stringResource(id = R.string.ready_to_connect)
             },
             textAlign = TextAlign.Center
         )
         Spacer(Modifier.height(32.dp))
         Button(onClick = onGetStartedClick) {
-            Text("Get Started")
+            Text(stringResource(id = R.string.get_started_button))
         }
     }
 }
@@ -301,21 +301,21 @@ private fun ControlPanel(
             }
         ) {
             PressAndHoldButton(onPress = onStartMovingForward, onRelease = onStopMoving, modifier = Modifier.size(100.dp)) {
-                Icon(Icons.Default.KeyboardArrowUp, "Forward", modifier = Modifier.size(90.dp))
+                Icon(Icons.Default.KeyboardArrowUp, stringResource(id = R.string.forward_button), modifier = Modifier.size(90.dp))
             }
             Spacer(Modifier.height(8.dp))
             Row {
                 PressAndHoldButton(onPress = onStartTurningLeft, onRelease = onStopMoving, modifier = Modifier.size(100.dp)) {
-                    Icon(Icons.AutoMirrored.Filled.KeyboardArrowLeft, "Left", modifier = Modifier.size(90.dp))
+                    Icon(Icons.AutoMirrored.Filled.KeyboardArrowLeft, stringResource(id = R.string.left_button), modifier = Modifier.size(90.dp))
                 }
                 Spacer(Modifier.width(40.dp))
                 PressAndHoldButton(onPress = onStartTurningRight, onRelease = onStopMoving, modifier = Modifier.size(100.dp)) {
-                    Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, "Right", modifier = Modifier.size(90.dp))
+                    Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, stringResource(id = R.string.right_button), modifier = Modifier.size(90.dp))
                 }
             }
             Spacer(Modifier.height(8.dp))
             PressAndHoldButton(onPress = onStartMovingBackward, onRelease = onStopMoving, modifier = Modifier.size(100.dp)) {
-                Icon(Icons.Default.KeyboardArrowDown, "Backward", modifier = Modifier.size(90.dp))
+                Icon(Icons.Default.KeyboardArrowDown, stringResource(id = R.string.backward_button), modifier = Modifier.size(90.dp))
             }
         }
 
@@ -339,19 +339,19 @@ private fun ControlPanel(
                     colors = ButtonDefaults.buttonColors(
                         containerColor = if (selectedSpeed == "high") selectedColor else unselectedColor
                     )
-                ) { Text("High") }
+                ) { Text(stringResource(id = R.string.high_speed_button)) }
                 Button(
                     onClick = { onSetSpeed("medium") },
                     colors = ButtonDefaults.buttonColors(
                         containerColor = if (selectedSpeed == "medium") selectedColor else unselectedColor
                     )
-                ) { Text("Medium") }
+                ) { Text(stringResource(id = R.string.medium_speed_button)) }
                 Button(
                     onClick = { onSetSpeed("low") },
                     colors = ButtonDefaults.buttonColors(
                         containerColor = if (selectedSpeed == "low") selectedColor else unselectedColor
                     )
-                ) { Text("Low") }
+                ) { Text(stringResource(id = R.string.low_speed_button)) }
             }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 val selectedColor = MaterialTheme.colorScheme.primary
@@ -362,17 +362,17 @@ private fun ControlPanel(
                     colors = ButtonDefaults.buttonColors(
                         containerColor = if (isFrontLightOn) selectedColor else unselectedColor
                     )
-                ) { Text(if (isFrontLightOn) "Front Off" else "Front On") }
+                ) { Text(if (isFrontLightOn) stringResource(id = R.string.front_off_button) else stringResource(id = R.string.front_on_button)) }
                 Button(
                     onClick = onToggleBackLight,
                     colors = ButtonDefaults.buttonColors(
                         containerColor = if (isBackLightOn) selectedColor else unselectedColor
                     )
-                ) { Text(if (isBackLightOn) "Back Off" else "Back On") }
+                ) { Text(if (isBackLightOn) stringResource(id = R.string.back_off_button) else stringResource(id = R.string.back_on_button)) }
             }
-            PressAndHoldButton(onPress = onStartHorn, onRelease = onStopHorn) { Text("Horn") }
+            PressAndHoldButton(onPress = onStartHorn, onRelease = onStopHorn) { Text(stringResource(id = R.string.horn_button)) }
             IconButton(onClick = onVoiceCommandClick) {
-                Icon(Icons.Filled.Mic, "Voice Command", modifier = Modifier.size(48.dp))
+                Icon(Icons.Filled.Mic, stringResource(id = R.string.voice_command_button), modifier = Modifier.size(48.dp))
             }
         }
     }
@@ -412,9 +412,9 @@ fun PressAndHoldButton(
 private fun BluetoothDisabledDialog(onConfirm: () -> Unit) {
     AlertDialog(
         onDismissRequest = {},
-        title = { Text("Bluetooth Disabled") },
-        text = { Text("Please enable Bluetooth to use this app.") },
-        confirmButton = { Button(onClick = onConfirm) { Text("Enable") } }
+        title = { Text(stringResource(id = R.string.bluetooth_disabled_title)) },
+        text = { Text(stringResource(id = R.string.bluetooth_disabled_message)) },
+        confirmButton = { Button(onClick = onConfirm) { Text(stringResource(id = R.string.enable_button)) } }
     )
 }
 
@@ -427,9 +427,9 @@ private fun ReconnectButton(uiState: CarControlUiState, onClick: () -> Unit, mod
     ) {
         Text(
             when {
-                uiState.isConnected -> "Disconnect"
-                uiState.isConnecting -> "Connecting..."
-                else -> "Reconnect"
+                uiState.isConnected -> stringResource(id = R.string.disconnect_button)
+                uiState.isConnecting -> stringResource(id = R.string.connecting_message)
+                else -> stringResource(id = R.string.reconnect_button)
             }
         )
     }
@@ -444,7 +444,7 @@ private fun ConnectingIndicator(isConnecting: Boolean) {
     ) {
         CircularProgressIndicator()
         Spacer(Modifier.height(8.dp))
-        Text(if (isConnecting) "Connecting..." else "Pairing...")
+        Text(if (isConnecting) stringResource(id = R.string.connecting_message) else stringResource(id = R.string.pairing_message))
     }
 }
 
@@ -454,7 +454,7 @@ private fun ErrorDialog(title: String, text: String, onDismiss: () -> Unit) {
         onDismissRequest = onDismiss,
         title = { Text(title) },
         text = { Text(text) },
-        confirmButton = { Button(onClick = onDismiss) { Text("OK") } }
+        confirmButton = { Button(onClick = onDismiss) { Text(stringResource(id = R.string.ok_button)) } }
     )
 }
 
@@ -467,15 +467,15 @@ private fun PinEntryDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Enter PIN Code") },
+        title = { Text(stringResource(id = R.string.enter_pin_title)) },
         text = {
             Column {
-                Text("Please enter the PIN.")
+                Text(stringResource(id = R.string.enter_pin_message))
                 Spacer(Modifier.height(16.dp))
                 OutlinedTextField(
                     value = pin,
                     onValueChange = { pin = it },
-                    label = { Text("PIN") },
+                    label = { Text(stringResource(id = R.string.pin_label)) },
                     // 1. Ensure the text field does not wrap to a new line.
                     singleLine = true,
                     // 2. Specify the keyboard type to show a number pad.
@@ -488,12 +488,12 @@ private fun PinEntryDialog(
                 onClick = { onConfirm(pin) },
                 enabled = pin.isNotBlank()
             ) {
-                Text("Pair")
+                Text(stringResource(id = R.string.pair_button))
             }
         },
         dismissButton = {
             Button(onClick = onDismiss) {
-                Text("Cancel")
+                Text(stringResource(id = R.string.cancel_button))
             }
         }
     )

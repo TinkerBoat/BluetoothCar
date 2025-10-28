@@ -1,0 +1,47 @@
+<resources>
+    <string name="app_name">BluetoothCar</string>
+    <string name="welcome_message">Bluetooth Araç Kontrolcüsüne hoş geldiniz! Bu uygulama, aracınıza bağlanmak için Bluetootu kullanır ve yakındaki cihazları taramak için konum erişimi gerektirir. Başlamak için lütfen bu izinleri verin.</string>
+    <string name="stop_scan">Taramayı Durdur</string>
+    <string name="scan_for_devices">Cihazları Tara</string>
+    <string name="exit">Çıkış</string>
+    <string name="device_info">%1$s - %2$s</string>
+    <string name="connection_failed">Cihaza bağlanılamadı</string>
+    <string name="speed_high">yüksek</string>
+    <string name="speed_medium">orta</string>
+    <string name="speed_low">düşük</string>
+    <string name="speak_a_command">Bir komut söyleyin</string>
+    <string name="connection_failed_title">Bağlantı Başarısız</string>
+    <string name="pairing_failed_title">Eşleştirme Başarısız</string>
+    <string name="pairing_failed_message">Seçilen cihazla eşleştirilemedi.</string>
+    <string name="enter_pin_title">PIN Kodunu Girin</string>
+    <string name="enter_pin_message">Lütfen PIN kodunuzu girin.</string>
+    <string name="pin_label">PIN</string>
+    <string name="pair_button">Eşleştir</string>
+    <string name="cancel_button">İptal</string>
+    <string name="tinkerboat_logo_description">Tinkerboat Logosu</string>
+    <string name="bluetooth_disabled_message">Bluetooth devre dışı. Devam etmek için lütfen etkinleştirin.</string>
+    <string name="ready_to_connect">Bağlanmaya hazır!</string>
+    <string name="get_started_button">Başlayın</string>
+    <string name="forward_button">İleri</string>
+    <string name="left_button">Sol</string>
+    <string name="right_button">Sağ</string>
+    <string name="backward_button">Geri</string>
+    <string name="high_speed_button">Yüksek</string>
+    <string name="medium_speed_button">Orta</string>
+    <string name="low_speed_button">Düşük</string>
+    <string name="front_off_button">Ön Kapalı</string>
+    <string name="front_on_button">Ön Açık</string>
+    <string name="back_off_button">Arka Kapalı</string>
+    <string name="back_on_button">Arka Açık</string>
+    <string name="horn_button">Korna</string>
+    <string name="voice_command_button">Sesli Komut</string>
+    <string name="bluetooth_disabled_title">Bluetooth Devre Dışı</string>
+    <string name="enable_button">Etkinleştir</string>
+    <string name="disconnect_button">Bağlantıyı Kes</string>
+    <string name="connecting_message">Bağlanılıyor…</string>
+    <string name="reconnect_button">Yeniden Bağlan</string>
+    <string name="pairing_message">Eşleştiriliyor…</string>
+    <string name="ok_button">Tamam</string>
+    <string name="error_message">Cihaza bağlanılamadı.</string>
+
+</resources>

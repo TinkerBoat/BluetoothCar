@@ -32,10 +32,10 @@ class CarControlViewModel @Inject constructor(
     val isConnected: StateFlow<Boolean> = _isConnected.asStateFlow()
 
     private val _discoveredDevices = MutableStateFlow<List<BluetoothDevice>>(emptyList())
-    val discoveredDevices: StateFlow<List<BluetoothDevice>> = _discoveredDevices.asStateFlow()
+    //val discoveredDevices: StateFlow<List<BluetoothDevice>> = _discoveredDevices.asStateFlow()
 
     private val _filterUnnamedDevices = MutableStateFlow(true)
-    val filterUnnamedDevices: StateFlow<Boolean> = _filterUnnamedDevices.asStateFlow()
+    //val filterUnnamedDevices: StateFlow<Boolean> = _filterUnnamedDevices.asStateFlow()
 
     private val _filteredDevices = MutableStateFlow<List<BluetoothDevice>>(emptyList())
     val filteredDevices: StateFlow<List<BluetoothDevice>> = _filteredDevices.asStateFlow()
@@ -43,8 +43,8 @@ class CarControlViewModel @Inject constructor(
     private val _isConnecting = MutableStateFlow(false)
     val isConnecting: StateFlow<Boolean> = _isConnecting.asStateFlow()
 
-    private val _connectionError = MutableStateFlow<String?>(null)
-    val connectionError: StateFlow<String?> = _connectionError.asStateFlow()
+    private val _connectionError = MutableStateFlow<Int?>(null)
+    val connectionError: StateFlow<Int?> = _connectionError.asStateFlow()
 
     private val _isBluetoothEnabled = MutableStateFlow(false)
     val isBluetoothEnabled: StateFlow<Boolean> = _isBluetoothEnabled.asStateFlow()
@@ -83,7 +83,7 @@ class CarControlViewModel @Inject constructor(
         CarControlUiState(
             isConnecting = values[0] as Boolean,
             isConnected = values[1] as Boolean,
-            connectionError = values[2] as? String,
+            connectionError = values[2] as? Int,
             pairingStatus = values[3] as PairingStatus,
             isBluetoothEnabled = values[4] as Boolean,
             hasLastConnectedDevice = values[5] as Boolean,
@@ -223,7 +223,7 @@ class CarControlViewModel @Inject constructor(
             withContext(Dispatchers.Main) {
                 _isConnected.value = success
                 if (!success) {
-                    _connectionError.value = "Failed to connect to device"
+                    _connectionError.value = R.string.connection_failed
                 }
                 _isConnecting.value = false
             }
@@ -361,7 +361,7 @@ class CarControlViewModel @Inject constructor(
 data class CarControlUiState(
     val isConnecting: Boolean = false,
     val isConnected: Boolean = false,
-    val connectionError: String? = null,
+    val connectionError: Int? = null,
     val pairingStatus: PairingStatus = PairingStatus.IDLE,
     val isBluetoothEnabled: Boolean = false,
     val hasLastConnectedDevice: Boolean = false,

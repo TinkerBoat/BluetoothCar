@@ -1,7 +1,46 @@
 <resources>
     <string name="app_name">BluetoothCar</string>
-    <string name="welcome_message">Welcome to the Bluetooth Car Controller! This app uses Bluetooth
-        to connect to your car and requires location access to scan for nearby devices. Please grant
-        these permissions to get started.
-    </string>
+    <string name="welcome_message">Welcome to the Bluetooth Car Controller! This app uses Bluetooth to connect to your car and requires location access to scan for nearby devices. Please grant these permissions to get started.</string>
+    <string name="stop_scan">Stop Scan</string>
+    <string name="scan_for_devices">Scan for Devices</string>
+    <string name="exit">Exit</string>
+    <string name="device_info">%1$s - %2$s</string>
+    <string name="connection_failed">Failed to connect to device</string>
+    <string name="speed_high">high</string>
+    <string name="speed_medium">medium</string>
+    <string name="speed_low">low</string>
+    <string name="speak_a_command">Speak a command</string>
+    <string name="connection_failed_title">Connection Failed</string>
+    <string name="pairing_failed_title">Pairing Failed</string>
+    <string name="pairing_failed_message">Could not pair with the selected device.</string>
+    <string name="enter_pin_title">Enter PIN Code</string>
+    <string name="enter_pin_message">Please enter the PIN.</string>
+    <string name="pin_label">PIN</string>
+    <string name="pair_button">Pair</string>
+    <string name="cancel_button">Cancel</string>
+    <string name="tinkerboat_logo_description">Tinkerboat Logo</string>
+    <string name="bluetooth_disabled_message">Bluetooth is disabled. Please enable it to continue.</string>
+    <string name="ready_to_connect">Ready to connect!</string>
+    <string name="get_started_button">Get Started</string>
+    <string name="forward_button">Forward</string>
+    <string name="left_button">Left</string>
+    <string name="right_button">Right</string>
+    <string name="backward_button">Backward</string>
+    <string name="high_speed_button">High</string>
+    <string name="medium_speed_button">Medium</string>
+    <string name="low_speed_button">Low</string>
+    <string name="front_off_button">Front Off</string>
+    <string name="front_on_button">Front On</string>
+    <string name="back_off_button">Back Off</string>
+    <string name="back_on_button">Back On</string>
+    <string name="horn_button">Horn</string>
+    <string name="voice_command_button">Voice Command</string>
+    <string name="bluetooth_disabled_title">Bluetooth Disabled</string>
+    <string name="enable_button">Enable</string>
+    <string name="disconnect_button">Disconnect</string>
+    <string name="connecting_message">Connecting…</string>
+    <string name="reconnect_button">Reconnect</string>
+    <string name="pairing_message">Pairing…</string>
+    <string name="ok_button">OK</string>
+    <string name="error_message">Can not connect to the device.</string>
 </resources>

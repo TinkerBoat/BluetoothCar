@@ -28,6 +28,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.core.app.ActivityCompat
@@ -63,7 +64,7 @@ fun BluetoothDeviceListScreen(viewModel: CarControlViewModel, onNavigateBack: ()
                         viewModel.startDiscovery()
                     }
                 }) {
-                    Text(if (isScanning) "Stop Scan" else "Scan for Devices")
+                    Text(if (isScanning) stringResource(id = R.string.stop_scan) else stringResource(id = R.string.scan_for_devices))
                 }
 
                 if (isScanning) {
@@ -89,7 +90,7 @@ fun BluetoothDeviceListScreen(viewModel: CarControlViewModel, onNavigateBack: ()
                             onNavigateBack()
                         }
                     ) {
-                        Text("${device.name} - ${device.address}")
+                        Text(stringResource(id = R.string.device_info, device.name, device.address))
                     }
                 }
             }
@@ -102,7 +103,7 @@ fun BluetoothDeviceListScreen(viewModel: CarControlViewModel, onNavigateBack: ()
                 .align(Alignment.TopEnd)
                 .padding(16.dp)
         ) {
-            Icon(Icons.Default.Close, contentDescription = "Exit")
+            Icon(Icons.Default.Close, contentDescription = stringResource(id = R.string.exit))
         }
     }
 }
