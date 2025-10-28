@@ -89,7 +89,7 @@ fun BluetoothDeviceListScreen(viewModel: CarControlViewModel, onNavigateBack: ()
                             onNavigateBack()
                         }
                     ) {
-                        Text(device.name ?: device.address)
+                        Text("${device.name} - ${device.address}")
                     }
                 }
             }
