@@ -30,9 +30,11 @@ import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -44,6 +46,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -151,6 +154,7 @@ fun NewCarControlScreen(viewModel: CarControlViewModel, onNavigateToDeviceList: 
                     uiState.isConnected -> ControlPanel(
                         isFrontLightOn = uiState.isFrontLightOn,
                         isBackLightOn = uiState.isBackLightOn,
+                        selectedSpeed = uiState.selectedSpeed,
                         onStartMovingForward = viewModel::startMovingForward,
                         onStartMovingBackward = viewModel::startMovingBackward,
                         onStartTurningLeft = viewModel::startTurningLeft,
@@ -244,7 +248,7 @@ private fun WelcomeScreen(
             contentDescription = "Tinkerboat Logo",
             modifier = Modifier.size(150.dp)
         )
-        Spacer(Modifier.height(8.dp))
+        Spacer(Modifier.height(16.dp))
         Text(
             text = when {
                 !allPermissionsGranted -> stringResource(id = R.string.welcome_message)
@@ -264,6 +268,7 @@ private fun WelcomeScreen(
 private fun ControlPanel(
     isFrontLightOn: Boolean,
     isBackLightOn: Boolean,
+    selectedSpeed: String?,
     onStartMovingForward: () -> Unit,
     onStartMovingBackward: () -> Unit,
     onStartTurningLeft: () -> Unit,
@@ -326,9 +331,27 @@ private fun ControlPanel(
             }
         ) {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Button(onClick = { onSetSpeed("high") }) { Text("High") }
-                Button(onClick = { onSetSpeed("medium") }) { Text("Medium") }
-                Button(onClick = { onSetSpeed("low") }) { Text("Low") }
+                val selectedColor = MaterialTheme.colorScheme.primary
+                val unselectedColor = Color.Gray
+
+                Button(
+                    onClick = { onSetSpeed("high") },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = if (selectedSpeed == "high") selectedColor else unselectedColor
+                    )
+                ) { Text("High") }
+                Button(
+                    onClick = { onSetSpeed("medium") },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = if (selectedSpeed == "medium") selectedColor else unselectedColor
+                    )
+                ) { Text("Medium") }
+                Button(
+                    onClick = { onSetSpeed("low") },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = if (selectedSpeed == "low") selectedColor else unselectedColor
+                    )
+                ) { Text("Low") }
             }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Button(onClick = onToggleFrontLight) { Text(if (isFrontLightOn) "Front Off" else "Front On") }
@@ -489,6 +512,7 @@ fun ControlPanelPreview() {
     ControlPanel(
         isFrontLightOn = false,
         isBackLightOn = true,
+        selectedSpeed = "medium",
         onStartMovingForward = {},
         onStartMovingBackward = {},
         onStartTurningLeft = {},

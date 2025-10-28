@@ -66,7 +66,8 @@ class CarControlViewModel @Inject constructor(
     private val _isBackLightOn = MutableStateFlow(false)
     val isBackLightOn: StateFlow<Boolean> = _isBackLightOn.asStateFlow()
 
-    // CarControlViewModel.kt
+    private val _selectedSpeed = MutableStateFlow<String?>(null)
+    val selectedSpeed: StateFlow<String?> = _selectedSpeed.asStateFlow()
 
     val uiState: StateFlow<CarControlUiState> = combine(
         isConnecting,
@@ -76,7 +77,8 @@ class CarControlViewModel @Inject constructor(
         isBluetoothEnabled,
         hasLastConnectedDevice,
         isFrontLightOn,
-        isBackLightOn
+        isBackLightOn,
+        selectedSpeed
     ) { values ->
         CarControlUiState(
             isConnecting = values[0] as Boolean,
@@ -86,7 +88,8 @@ class CarControlViewModel @Inject constructor(
             isBluetoothEnabled = values[4] as Boolean,
             hasLastConnectedDevice = values[5] as Boolean,
             isFrontLightOn = values[6] as Boolean,
-            isBackLightOn = values[7] as Boolean
+            isBackLightOn = values[7] as Boolean,
+            selectedSpeed = values[8] as? String
         )
     }.stateIn(
         scope = viewModelScope,
@@ -240,6 +243,7 @@ class CarControlViewModel @Inject constructor(
     }
 
     fun setSpeed(speed: String) {
+        _selectedSpeed.value = speed
         val command = when (speed) {
             "high" -> "q"
             "medium" -> "3"
@@ -362,5 +366,6 @@ data class CarControlUiState(
     val isBluetoothEnabled: Boolean = false,
     val hasLastConnectedDevice: Boolean = false,
     val isFrontLightOn: Boolean = false,
-    val isBackLightOn: Boolean = false
+    val isBackLightOn: Boolean = false,
+    val selectedSpeed: String? = null
 )
